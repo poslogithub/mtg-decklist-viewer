@@ -79,16 +79,25 @@
                 );
                 const data = await response.json();
 
-                if (data.object == "list" && data.data.length > 0) {
+                if (data.object === "list" && data.data.length > 0) {
                     // 完全一致を確認
                     const exactMatch = data.data.find(card => 
                         card.printed_name == cardName
                     );
                     
                     if (exactMatch) {
-                        return exactMatch.image_uris?.png || null;
+                        // 通常のカードの場合
+                        return exactMatch.image_uris?.small || null;
                     } else {
-                        throw new Error(`「${cardName}」の日本語版が見つかりませんでした`);
+                        const exactMatch = data.data.find(card => 
+                            card.card_faces[0].printed_name == cardName
+                        );
+                        // 両面カードの場合、表面の画像を取得
+                        if (exactMatch) {
+                            return exactMatch.card_faces[0].image_uris?.small || null;
+                        } else {
+                            throw new Error(`「${cardName}」の日本語版が見つかりませんでした`);
+                        }
                     }
                 } else {
                     throw new Error(`「${cardName}」の日本語版が見つかりませんでした`);
@@ -148,8 +157,25 @@
                     const match = line.match(/^(\d+)\s+(.+)$/);
                     if (match) {
                         const quantity = parseInt(match[1], 10);
-                        const cardName = match[2];
+                        let cardName = match[2];
+                        
+                        // 括弧とその中身を削除
+                        cardName = cardName.replace(/（[^）]+）/g, '');
+                        
+                        let setCode = null;
+                        let cardNo = null;
+                        
+                        // (NEO) のような部分と番号を抽出
+                        const setMatch = cardName.match(/\s*\(([A-Z0-9]+)\)\s*(\d+)?$/);
+                        if (setMatch) {
+                            setCode = setMatch[1]; // NEO の部分
+                            cardNo = setMatch[2] ? parseInt(setMatch[2], 10) : null; // 141 の部分（存在する場合）
+                            // マッチした部分をcardNameから削除
+                            cardName = cardName.replace(/\s*\([A-Z0-9]+\)\s*\d*$/, '');
+                        }
+                        
                         cardMap.set(cardName, (cardMap.get(cardName) || 0) + quantity);
+                        // setCode と cardNo が必要な場合はここで利用可能
                     } else {
                         errorDiv.textContent += `無効な行: "${line}"\n`;
                     }
