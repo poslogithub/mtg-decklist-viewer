@@ -87,14 +87,14 @@
                     
                     if (exactMatch) {
                         // 通常のカードの場合
-                        return exactMatch.image_uris?.small || null;
+                        return exactMatch.image_uris?.png || null;
                     } else {
                         const exactMatch = data.data.find(card => 
                             card.card_faces[0].printed_name == cardName
                         );
                         // 両面カードの場合、表面の画像を取得
                         if (exactMatch) {
-                            return exactMatch.card_faces[0].image_uris?.small || null;
+                            return exactMatch.card_faces[0].image_uris?.png || null;
                         } else {
                             throw new Error(`「${cardName}」の日本語版が見つかりませんでした`);
                         }
