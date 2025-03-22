@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MTGデッキリスト画像生成（Grokに作ってもらいました）</title>
+    <title>MTGデッキリスト画像生成</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -53,7 +53,7 @@
     </style>
 </head>
 <body>
-    <h1>MTGアリーナ デッキリスト画像生成</h1>
+    <h1>MTGアリーナ デッキリスト画像生成（Grokに作ってもらいました）</h1>
     <p>MTGアリーナ形式の日本語デッキリストを入力してください:</p>
     <textarea id="deckInput" placeholder="4 稲妻&#10;2 桜族の長老&#10;..."></textarea>
     <button onclick="generateDeckImages()">画像を生成</button>
@@ -119,12 +119,28 @@
                 return;
             }
 
-            // デッキとサイドボードを分離
-            const sections = deckInput.split(/\n\s*サイドボード\s*\n/);
-            const mainDeckLines = sections[0].split("\n").filter(line => line.trim());
-            const sideboardLines = sections[1] ? sections[1].split("\n").filter(line => line.trim()) : [];
+            // 行ごとに分割し、空行でセクションを分離
+            const lines = deckInput.split("\n").map(line => line.trim());
+            let mainDeckLines = [];
+            let sideboardLines = [];
+            let isSideboard = false;
 
-            // カードリストを処理する関数
+            // 先頭の空行を無視しつつ、メインデッキとサイドボードを分離
+            for (let i = 0; i < lines.length; i++) {
+                if (lines[i] === "" && mainDeckLines.length > 0 && !isSideboard) {
+                    isSideboard = true; // 最初の空行以降をサイドボードとみなす
+                    continue;
+                }
+                if (lines[i] !== "") { // 空行でない場合のみ追加
+                    if (!isSideboard) {
+                        mainDeckLines.push(lines[i]);
+                    } else {
+                        sideboardLines.push(lines[i]);
+                    }
+                }
+            }
+
+            // カードリストを処理する関数（変更なし）
             async function processDeck(lines, targetDiv) {
                 const cardMap = new Map(); // カード名と数量を管理
 
@@ -135,15 +151,13 @@
                         const cardName = match[2];
                         cardMap.set(cardName, (cardMap.get(cardName) || 0) + quantity);
                     } else {
-                        if (line != "デッキ" && line != "サイドボード") {
-                            errorDiv.textContent += `無効な行: "${line}"\n`;
-                        }
+                        errorDiv.textContent += `無効な行: "${line}"\n`;
                     }
                 }
 
                 // カード画像のURLを取得
                 const cardPromises = Array.from(cardMap.entries()).map(async ([cardName, quantity], index) => {
-                    await sleep(index * 100); // インデックスに応じて遅延（0ms, 100ms, 200ms...）
+                    await sleep(index * 100); // インデックスに応じて遅延
                     const imageUrl = await fetchCardImage(cardName);
                     return { cardName, quantity, imageUrl };
                 });
@@ -156,30 +170,26 @@
                     cardContainer.className = "card-container";
 
                     if (imageUrl) {
-                        // 画像がある場合
                         const img = document.createElement("img");
                         img.src = imageUrl;
                         img.alt = cardName;
                         img.className = "card-image";
                         cardContainer.appendChild(img);
                     } else {
-                        // 画像がない場合：濃いグレーの四角とカード名を表示
                         const placeholder = document.createElement("div");
                         placeholder.style.width = "223px";
                         placeholder.style.height = "310px";
-                        placeholder.style.backgroundColor = "#333333"; // 濃いグレー
+                        placeholder.style.backgroundColor = "#333333";
                         placeholder.style.display = "flex";
                         placeholder.style.alignItems = "center";
                         placeholder.style.justifyContent = "center";
                         placeholder.style.color = "white";
                         placeholder.style.fontSize = "20px";
                         placeholder.style.textAlign = "center";
-                        //placeholder.style.padding = "10px";
-                        placeholder.textContent = cardName; // カード名を表示
+                        placeholder.textContent = cardName;
                         cardContainer.appendChild(placeholder);
                     }
 
-                    // 数量を表示
                     const quantityDiv = document.createElement("div");
                     quantityDiv.className = "card-quantity";
                     quantityDiv.textContent = quantity;
@@ -187,7 +197,6 @@
                     cardContainer.appendChild(quantityDiv);
                     targetDiv.appendChild(cardContainer);
 
-                    // エラー表示は維持
                     if (!imageUrl) {
                         errorDiv.textContent += `「${cardName}」の画像を取得できませんでした。\n`;
                     }
@@ -217,7 +226,7 @@
             }
         }
     </script>
-<p>作った人：<a href="https://x.com/poslog">ぽｓ</a></p>
-<p><a href="https://github.com/poslogithub/binary-dist/tree/main/mtga-commentary-automation">MTGA自動実況ツール</a>もよろしくね。</p>
+<p>作った人：<a href="https://x.com/poslog" target="_blank">ぽｓ</a></p>
+<p><a href="https://github.com/poslogithub/binary-dist/tree/main/mtga-commentary-automation" target="_blank">MTGA自動実況ツール</a>もよろしくね。</p>
 </body>
 </html>
