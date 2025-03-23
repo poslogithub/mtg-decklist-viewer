@@ -4,10 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MTGデッキ画像生成</title>
+    <!-- html2canvasライブラリを追加 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
             margin: 20px;
+            background-color: #ffffff; /* 背景色を明示的に指定（デフォルトは白色） */
         }
         #deckInput {
             width: 100%;
@@ -50,23 +53,36 @@
             color: red;
             margin-top: 10px;
         }
+        /* ボタンを横に並べるためのスタイル */
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
     </style>
 </head>
 <body>
     <h1>MTGデッキ画像生成（Grokに作ってもらいました）</h1>
     <p>日本語デッキリストを入力してください:</p>
     <textarea id="deckInput" placeholder="4 稲妻&#10;2 桜族の長老&#10;..."></textarea>
-    <button onclick="generateDeckImages()">画像を生成</button>
+    <!-- ボタンをグループ化して横に並べる -->
+    <div class="button-group">
+        <button onclick="generateDeckImages()">デッキ画像を生成</button>
+        <button id="downloadAllBtn" style="display: none;" onclick="downloadAll()">デッキ画像をダウンロード</button>
+    </div>
     <div id="error"></div>
-    <div id="deckSection" class="deck-section">
-        <h2>メインデッキ</h2>
-        <div id="deckImages" class="card-grid"></div>
+    <!-- メインデッキとサイドボードを包含するコンテナ -->
+    <div id="deckContainer">
+        <div id="deckSection" class="deck-section">
+            <h2>メインデッキ</h2>
+            <div id="deckImages" class="card-grid"></div>
+        </div>
+        <div id="sideboardSection" class="sideboard-section">
+            <h2>サイドボード</h2>
+            <div id="sideboardImages" class="card-grid"></div>
+        </div>
     </div>
-    <div id="sideboardSection" class="sideboard-section">
-        <h2>サイドボード</h2>
-        <div id="sideboardImages" class="card-grid"></div>
-    </div>
-
+    
     <script>
         function sleep(ms) {
             return new Promise(resolve => setTimeout(resolve, ms));
@@ -80,7 +96,7 @@
                 const data = await response.json();
 
                 if (data.object === "list" && data.data.length > 0) {
-                    // 完全一致を確認
+                    // カード名の一致を確認
                     const exactMatch = data.data.find(card => 
                         card.printed_name == cardName
                     );
@@ -108,6 +124,25 @@
             }
         }
 
+        // 全体を画像としてダウンロードする関数
+        async function downloadAll() {
+            const deckContainer = document.getElementById('deckContainer');
+            try {
+                const canvas = await html2canvas(deckContainer, {
+                    backgroundColor: '#ffffff', // bodyの背景色（白色）に合わせる
+                    scale: 2, // 高解像度でキャプチャ
+                    useCORS: true // 外部画像（カード画像）の読み込みを許可
+                });
+                const link = document.createElement('a');
+                link.href = canvas.toDataURL('image/png');
+                link.download = 'deck-all.png';
+                link.click();
+            } catch (error) {
+                console.error('画像のダウンロードに失敗しました:', error);
+                alert('画像のダウンロードに失敗しました。カード画像が正しく読み込まれていない可能性があります。');
+            }
+        }
+
         async function generateDeckImages() {
             const deckInput = document.getElementById("deckInput").value.trim();
             const deckImagesDiv = document.getElementById("deckImages");
@@ -115,6 +150,7 @@
             const errorDiv = document.getElementById("error");
             const deckSection = document.getElementById("deckSection");
             const sideboardSection = document.getElementById("sideboardSection");
+            const downloadAllBtn = document.getElementById("downloadAllBtn");
 
             // 初期化
             deckImagesDiv.innerHTML = "";
@@ -122,6 +158,7 @@
             errorDiv.textContent = "";
             deckSection.style.display = "none";
             sideboardSection.style.display = "none";
+            downloadAllBtn.style.display = "none";
 
             if (!deckInput) {
                 errorDiv.textContent = "デッキリストを入力してください";
@@ -149,7 +186,7 @@
                 }
             }
 
-            // カードリストを処理する関数（変更なし）
+            // カードリストを処理する関数
             async function processDeck(lines, targetDiv) {
                 const cardMap = new Map(); // カード名と数量を管理
 
@@ -165,7 +202,7 @@
                         let setCode = null;
                         let cardNo = null;
                         
-                        // (NEO) のような部分と番号を抽出
+                        // (セット名) と番号を抽出
                         const setMatch = cardName.match(/\s*\(([A-Z0-9]+)\)\s*(\d+)?$/);
                         if (setMatch) {
                             setCode = setMatch[1]; // NEO の部分
@@ -183,7 +220,7 @@
 
                 // カード画像のURLを取得
                 const cardPromises = Array.from(cardMap.entries()).map(async ([cardName, quantity], index) => {
-                    await sleep(index * 100); // インデックスに応じて遅延
+                    await sleep(index * 100); // 1API毎に100ms遅延（Scryfall API利用規約）
                     const imageUrl = await fetchCardImage(cardName);
                     return { cardName, quantity, imageUrl };
                 });
@@ -200,8 +237,10 @@
                         img.src = imageUrl;
                         img.alt = cardName;
                         img.className = "card-image";
+                        img.crossOrigin = "Anonymous"; // CORS対策
                         cardContainer.appendChild(img);
                     } else {
+                        // カード画像のURLが取得できなかった場合は灰色の四角とカード名を表示する
                         const placeholder = document.createElement("div");
                         placeholder.style.width = "223px";
                         placeholder.style.height = "310px";
@@ -249,6 +288,11 @@
             if (sideboardCount > 0) {
                 sideboardSection.querySelector("h2").textContent = `サイドボード (${sideboardCount})`;
                 sideboardSection.style.display = "block";
+            }
+
+            // メインデッキが生成されたらダウンロードボタンを表示
+            if (mainDeckCount > 0) {
+                downloadAllBtn.style.display = "inline-block";
             }
         }
     </script>
