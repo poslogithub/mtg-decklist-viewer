@@ -5,15 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="Content-Security-Policy" content="
         default-src 'self';
-        script-src 'self' https://cdnjs.cloudflare.com;
+        script-src 'self' https://cdnjs.cloudflare.com file:///*;
         img-src 'self' https://*.scryfall.io https://*.scryfall.com;
         connect-src 'self' https://*.scryfall.com;
-        style-src 'self' 'unsafe-inline';
+        style-src 'self' 'unsafe-inline' file:///*;
     ">
     <title>MTGデッキ画像生成</title>
-    <script src="/mtg-decklist-viewer/mtg_decklist_viewer.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>  <!-- html2canvasライブラリ -->
     <link rel="stylesheet" href="/mtg-decklist-viewer/mtg_decklist_viewer.css"></head>
+    <link rel="stylesheet" href="file:///D:/github/mtg-decklist-viewer/mtg_decklist_viewer.css"></head>
 <body>
     <h1>MTGデッキ画像生成（Grokに作ってもらいました）</h1>
     <p>日本語デッキリストを入力してください:</p>
@@ -35,8 +35,9 @@
         </div>
     </div>
     
-    <script>
-    </script>
+    <script src="/mtg-decklist-viewer/mtg_decklist_viewer.js"></script>
+    <script src="file:///D:/github/mtg-decklist-viewer/mtg_decklist_viewer.js"></script>
+    
 <p>作った人：<a href="https://x.com/poslog" target="_blank">ぽｓ</a></p>
 <p><a href="https://github.com/poslogithub/binary-dist/tree/main/mtga-commentary-automation" target="_blank">MTGA自動実況ツール</a>もよろしくね。</p>
 </body>
