@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="Content-Security-Policy" content="
         default-src 'self';
-        script-src 'self' https://cdnjs.cloudflare.com  'unsafe-inline';
-        img-src 'self' https://*.scryfall.io;
+        script-src 'self' https://cdnjs.cloudflare.com 'unsafe-inline';
+        img-src 'self' https://*.scryfall.io https://*.scryfall.com;
         connect-src 'self' https://*.scryfall.com;
         style-src 'self' 'unsafe-inline';
     ">
@@ -60,7 +60,6 @@
             color: red;
             margin-top: 10px;
         }
-        /* ボタンを横に並べるためのスタイル */
         .button-group {
             display: flex;
             gap: 10px;
@@ -74,11 +73,10 @@
     <textarea id="deckInput" placeholder="4 稲妻&#10;2 桜族の長老&#10;..."></textarea>
     <!-- ボタンをグループ化して横に並べる -->
     <div class="button-group">
-        <button onclick="generateDeckImages()">デッキ画像を生成</button>
-        <button id="downloadAllBtn" style="display: none;" onclick="downloadAll()">デッキ画像をダウンロード</button>
+        <button id="generateBtn">デッキ画像を生成</button>
+        <button id="downloadAllBtn" style="display: none;">デッキ全体を画像としてダウンロード</button>
     </div>
     <div id="error"></div>
-    <!-- メインデッキとサイドボードを包含するコンテナ -->
     <div id="deckContainer">
         <div id="deckSection" class="deck-section">
             <h2>メインデッキ</h2>
@@ -302,6 +300,10 @@
                 downloadAllBtn.style.display = "inline-block";
             }
         }
+
+        // イベントリスナーを追加
+        document.getElementById('generateBtn').addEventListener('click', generateDeckImages);
+        document.getElementById('downloadAllBtn').addEventListener('click', downloadAll);
     </script>
 <p>作った人：<a href="https://x.com/poslog" target="_blank">ぽｓ</a></p>
 <p><a href="https://github.com/poslogithub/binary-dist/tree/main/mtga-commentary-automation" target="_blank">MTGA自動実況ツール</a>もよろしくね。</p>
