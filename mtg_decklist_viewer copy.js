@@ -17,26 +17,14 @@ async function fetchCardImage(cardName) {
             
             if (exactMatch) {
                 // 通常のカードの場合
-                const imageUrl = exactMatch.image_uris?.png;
-                if (imageUrl) {
-                    const imageResponse = await fetch(imageUrl);
-                    const imageBlob = await imageResponse.blob();
-                    return URL.createObjectURL(imageBlob);
-                }
-                return null;
+                return exactMatch.image_uris?.png || null;
             } else {
                 const exactMatch = data.data.find(card => 
                     card.card_faces[0].printed_name == cardName
                 );
                 // 両面カードの場合、表面の画像を取得
                 if (exactMatch) {
-                    const imageUrl = exactMatch.card_faces[0].image_uris?.png;
-                    if (imageUrl) {
-                        const imageResponse = await fetch(imageUrl);
-                        const imageBlob = await imageResponse.blob();
-                        return URL.createObjectURL(imageBlob);
-                    }
-                    return null;
+                    return exactMatch.card_faces[0].image_uris?.png || null;
                 } else {
                     throw new Error(`「${cardName}」の日本語版が見つかりませんでした`);
                 }
@@ -160,10 +148,10 @@ async function generateDeckImages() {
 
             if (imageUrl) {
                 const img = document.createElement("img");
-                img.src = imageUrl;  // Blob URL（例: blob://...）
+                img.src = imageUrl;
                 img.alt = cardName;
                 img.className = "card-image";
-                //img.crossOrigin = "Anonymous"; // CORS対策
+                img.crossOrigin = "Anonymous"; // CORS対策
                 cardContainer.appendChild(img);
             } else {
                 // カード画像のURLが取得できなかった場合は灰色の四角とカード名を表示する

@@ -6,14 +6,14 @@
     <meta http-equiv="Content-Security-Policy" content="
         default-src 'self';
         script-src 'self' https://cdnjs.cloudflare.com file:///*;
-        img-src 'self' https://*.scryfall.io https://*.scryfall.com;
-        connect-src 'self' https://*.scryfall.com;
+        img-src 'self' blob: https://*.scryfall.com https://*.scryfall.io;
+        connect-src 'self' https://*.scryfall.com https://*.scryfall.io;
         style-src 'self' 'unsafe-inline' file:///*;
     ">
     <title>MTGデッキ画像生成</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>  <!-- html2canvasライブラリ -->
     <link rel="stylesheet" href="/mtg-decklist-viewer/mtg_decklist_viewer.css"></head>
-    <link rel="stylesheet" href="file:///D:/github/mtg-decklist-viewer/mtg_decklist_viewer.css"></head>
+    <!--<link rel="stylesheet" href="file:///D:/github/mtg-decklist-viewer/mtg_decklist_viewer.css"></head>-->
 <body>
     <h1>MTGデッキ画像生成（Grokに作ってもらいました）</h1>
     <p>日本語デッキリストを入力してください:</p>
@@ -36,8 +36,14 @@
     </div>
     
     <script src="/mtg-decklist-viewer/mtg_decklist_viewer.js"></script>
-    <script src="file:///D:/github/mtg-decklist-viewer/mtg_decklist_viewer.js"></script>
-    
+    <!--<script src="file:///D:/github/mtg-decklist-viewer/mtg_decklist_viewer.js"></script>-->
+
+<h3>分かっている問題点</h3>
+<ul>
+    <li>《勢い挫き》等、画像が取得できないカードがある<br />→画像取得元のScryfall側に存在しないのでどうしようもない</li>
+    <li>《荒らされた地下室 // 解剖室》等、画像が取得できない部屋カードがある<br />→Scryfallでの部屋カードの検索の仕方が良く分からない</li>
+</ul>
+
 <p>作った人：<a href="https://x.com/poslog" target="_blank">ぽｓ</a></p>
 <p><a href="https://github.com/poslogithub/binary-dist/tree/main/mtga-commentary-automation" target="_blank">MTGA自動実況ツール</a>もよろしくね。</p>
 </body>
