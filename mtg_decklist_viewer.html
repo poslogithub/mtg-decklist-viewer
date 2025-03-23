@@ -130,7 +130,7 @@
             try {
                 const canvas = await html2canvas(deckContainer, {
                     backgroundColor: '#ffffff', // bodyの背景色（白色）に合わせる
-                    scale: 2, // 高解像度でキャプチャ
+                    scale: 1,
                     useCORS: true // 外部画像（カード画像）の読み込みを許可
                 });
                 const link = document.createElement('a');
