@@ -3,6 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="
+        default-src 'self';
+        script-src 'self' https://cdnjs.cloudflare.com;
+        img-src 'self' https://*.scryfall.com;
+        connect-src 'self' https://*.scryfall.com;
+        style-src 'self' 'unsafe-inline';
+    ">
     <title>MTGデッキ画像生成</title>
     <!-- html2canvasライブラリを追加 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
