@@ -6,24 +6,26 @@ async function fetchCardImage(cardName, setCode = null, cardNo = null) {
     try {
         let imageUrl;
         let searchName = cardName;
+        let response;
+        let data;
+        const isEnglishCard = /^[0-9a-zA-Z]/.test(cardName);    // カード名の先頭が数字かアルファベットならば英語と判断
 
         // 分割カードの場合、`//`の左側のみを使用
+        cardName = cardName.replace(/(?<!\s\/\/\s)\/(?!\/\s)/g, " // ");
         if (cardName.includes(" // ")) {
             searchName = cardName.split(" // ")[0].trim(); // 左側（第1面）を取得
         }
 
         // setCode と cardNo が提供された場合、コレクター番号で直接検索
         if (setCode && cardNo) {
-            let response = await fetch(
-                `https://api.scryfall.com/cards/${setCode.toLowerCase()}/${cardNo}/ja`
-            );
-            let data = await response.json();
+            const baseUrl = `https://api.scryfall.com/cards/${setCode.toLowerCase()}/${cardNo}`;
+            const url = isEnglishCard ? baseUrl : `${baseUrl}/ja`;
+            response = await fetch(url);
+            data = await response.json();
 
             // 日本語版カードが見つからなかった場合は、英語版カードを検索
-            if (data.object != "card") {
-                response = await fetch(
-                    `https://api.scryfall.com/cards/${setCode.toLowerCase()}/${cardNo}`
-                );
+            if (!isEnglishCard && data.object != "card") {
+                response = await fetch(baseUrl);
                 data = await response.json();
             }
             // 通常のカードの場合
@@ -37,19 +39,19 @@ async function fetchCardImage(cardName, setCode = null, cardNo = null) {
                 const imageBlob = await imageResponse.blob();
                 return URL.createObjectURL(imageBlob);
             }
-            throw new Error(`「${cardName} (${setCode} #${cardNo})」の画像が見つかりませんでした`);
+            throw new Error(`「${cardName} (${setCode} #${cardNo})」のカード画像が見つかりませんでした`);
         }
 
         // setCode/cardNoがない場合、または失敗した場合、カード名で検索（フォールバック）
-        const response = await fetch(
-            `https://api.scryfall.com/cards/search?q=lang:japanese+name:"${encodeURIComponent(searchName)}"`
-        );
-        const data = await response.json();
+        const baseUrl = `https://api.scryfall.com/cards/search?q=name:"${encodeURIComponent(isEnglishCard ? cardName : searchName)}"`;
+        const url = isEnglishCard ? baseUrl : `${baseUrl}+lang:japanese`
+        response = await fetch(url);
+        data = await response.json();
 
         if (data.object == "list" && data.data.length > 0) {
             // カード名の一致を確認
             const exactMatch = data.data.find(card => 
-                card.printed_name == searchName
+                (isEnglishCard ? cardName : searchName) == (isEnglishCard ? card.name : card.printed_name)
             );
             
             if (exactMatch) {
@@ -63,7 +65,7 @@ async function fetchCardImage(cardName, setCode = null, cardNo = null) {
                 return null;
             } else {
                 const faceMatch = data.data.find(card => 
-                    card.card_faces && card.card_faces[0].printed_name == searchName
+                    card.card_faces && searchName == (isEnglishCard ? card.card_faces[0].name : card.card_faces[0].printed_name)
                 );
                 // 両面カードor分割カード
                 if (faceMatch) {
@@ -85,7 +87,7 @@ async function fetchCardImage(cardName, setCode = null, cardNo = null) {
                 }
             }
         }
-        throw new Error(`「${cardName}」の日本語版が見つかりませんでした`);
+        throw new Error(`「${cardName}」のカード画像が見つかりませんでした`);
     } catch (error) {
         console.error(error);
         return null;
