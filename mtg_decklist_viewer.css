@@ -49,3 +49,15 @@ body {
     gap: 10px;
     margin-bottom: 10px;
 }
+#downloadAllBtn {
+    display: none;
+}
+#progress {
+    display: none;
+    align-self: center;
+    color: #666;
+    font-size: 14px;
+}
+#progressText {
+    font-weight: bold;
+}

@@ -2,22 +2,59 @@ function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-async function fetchCardImage(cardName) {
+async function fetchCardImage(cardName, setCode = null, cardNo = null) {
     try {
+        let imageUrl;
+        let searchName = cardName;
+
+        // 分割カードの場合、`//`の左側のみを使用
+        if (cardName.includes(" // ")) {
+            searchName = cardName.split(" // ")[0].trim(); // 左側（第1面）を取得
+        }
+
+        // setCode と cardNo が提供された場合、コレクター番号で直接検索
+        if (setCode && cardNo) {
+            let response = await fetch(
+                `https://api.scryfall.com/cards/${setCode.toLowerCase()}/${cardNo}/ja`
+            );
+            let data = await response.json();
+
+            // 日本語版カードが見つからなかった場合は、英語版カードを検索
+            if (data.object != "card") {
+                response = await fetch(
+                    `https://api.scryfall.com/cards/${setCode.toLowerCase()}/${cardNo}`
+                );
+                data = await response.json();
+            }
+            // 通常のカードの場合
+            imageUrl = data.image_uris?.png;
+            if (!imageUrl && data.card_faces) {
+                // 両面カードの場合、表面の画像を取得
+                imageUrl = data.card_faces[0].image_uris?.png;
+            }
+            if (imageUrl) {
+                const imageResponse = await fetch(imageUrl);
+                const imageBlob = await imageResponse.blob();
+                return URL.createObjectURL(imageBlob);
+            }
+            throw new Error(`「${cardName} (${setCode} #${cardNo})」の画像が見つかりませんでした`);
+        }
+
+        // setCode/cardNoがない場合、または失敗した場合、カード名で検索（フォールバック）
         const response = await fetch(
-            `https://api.scryfall.com/cards/search?q=lang:japanese+name:"${encodeURIComponent(cardName)}"`
+            `https://api.scryfall.com/cards/search?q=lang:japanese+name:"${encodeURIComponent(searchName)}"`
         );
         const data = await response.json();
 
-        if (data.object === "list" && data.data.length > 0) {
+        if (data.object == "list" && data.data.length > 0) {
             // カード名の一致を確認
             const exactMatch = data.data.find(card => 
-                card.printed_name == cardName
+                card.printed_name == searchName
             );
             
             if (exactMatch) {
                 // 通常のカードの場合
-                const imageUrl = exactMatch.image_uris?.png;
+                imageUrl = exactMatch.image_uris?.png;
                 if (imageUrl) {
                     const imageResponse = await fetch(imageUrl);
                     const imageBlob = await imageResponse.blob();
@@ -25,25 +62,30 @@ async function fetchCardImage(cardName) {
                 }
                 return null;
             } else {
-                const exactMatch = data.data.find(card => 
-                    card.card_faces[0].printed_name == cardName
+                const faceMatch = data.data.find(card => 
+                    card.card_faces && card.card_faces[0].printed_name == searchName
                 );
-                // 両面カードの場合、表面の画像を取得
-                if (exactMatch) {
-                    const imageUrl = exactMatch.card_faces[0].image_uris?.png;
+                // 両面カードor分割カード
+                if (faceMatch) {
+                    imageUrl = faceMatch.card_faces[0].image_uris?.png;
                     if (imageUrl) {
+                        // 両面カードの表面
                         const imageResponse = await fetch(imageUrl);
                         const imageBlob = await imageResponse.blob();
                         return URL.createObjectURL(imageBlob);
+                    } else {
+                        imageUrl = faceMatch.image_uris?.png;
+                        if (imageUrl) {
+                            // 分割カードの第1面
+                            const imageResponse = await fetch(imageUrl);
+                            const imageBlob = await imageResponse.blob();
+                            return URL.createObjectURL(imageBlob);
+                        }
                     }
-                    return null;
-                } else {
-                    throw new Error(`「${cardName}」の日本語版が見つかりませんでした`);
                 }
             }
-        } else {
-            throw new Error(`「${cardName}」の日本語版が見つかりませんでした`);
         }
+        throw new Error(`「${cardName}」の日本語版が見つかりませんでした`);
     } catch (error) {
         console.error(error);
         return null;
@@ -77,6 +119,8 @@ async function generateDeckImages() {
     const deckSection = document.getElementById("deckSection");
     const sideboardSection = document.getElementById("sideboardSection");
     const downloadAllBtn = document.getElementById("downloadAllBtn");
+    const progressDiv = document.getElementById("progress");
+    const progressText = document.getElementById("progressText");
 
     // 初期化
     deckImagesDiv.innerHTML = "";
@@ -85,6 +129,7 @@ async function generateDeckImages() {
     deckSection.style.display = "none";
     sideboardSection.style.display = "none";
     downloadAllBtn.style.display = "none";
+    progressDiv.style.display = "none";
 
     if (!deckInput) {
         errorDiv.textContent = "デッキリストを入力してください";
@@ -99,7 +144,7 @@ async function generateDeckImages() {
 
     // 先頭の空行を無視しつつ、メインデッキとサイドボードを分離
     for (let i = 0; i < lines.length; i++) {
-        if (lines[i] === "" && mainDeckLines.length > 0 && !isSideboard) {
+        if (lines[i] == "" && mainDeckLines.length > 0 && !isSideboard) {
             isSideboard = true; // 最初の空行以降をサイドボードとみなす
             continue;
         }
@@ -113,9 +158,9 @@ async function generateDeckImages() {
     }
 
     // カードリストを処理する関数
-    async function processDeck(lines, targetDiv) {
+    async function processDeck(lines, targetDiv, targetBoard = "") {
         const cardMap = new Map(); // カード名と数量を管理
-
+    
         for (const line of lines) {
             const match = line.match(/^(\d+)\s+(.+)$/);
             if (match) {
@@ -128,42 +173,61 @@ async function generateDeckImages() {
                 let setCode = null;
                 let cardNo = null;
                 
-                // (セット名) と番号を抽出
+                // (セット略号) と番号を抽出
                 const setMatch = cardName.match(/\s*\(([A-Z0-9]+)\)\s*(\d+)?$/);
                 if (setMatch) {
-                    setCode = setMatch[1]; // NEO の部分
-                    cardNo = setMatch[2] ? parseInt(setMatch[2], 10) : null; // 141 の部分（存在する場合）
+                    setCode = setMatch[1];
+                    cardNo = setMatch[2] ? parseInt(setMatch[2], 10) : null;
                     // マッチした部分をcardNameから削除
                     cardName = cardName.replace(/\s*\([A-Z0-9]+\)\s*\d*$/, '');
                 }
                 
-                cardMap.set(cardName, (cardMap.get(cardName) || 0) + quantity);
-                // setCode と cardNo が必要な場合はここで利用可能
+                // 同一カード名でも setCode と cardNo が異なる場合を考慮して複合キーを生成
+                const key = `${cardName}|${setCode || ''}|${cardNo || ''}`;
+                if (cardMap.has(key)) {
+                    const existing = cardMap.get(key);
+                    existing.quantity += quantity;
+                } else {
+                    cardMap.set(key, { quantity, setCode, cardNo });
+                }
             } else {
-                errorDiv.textContent += `無効な行: "${line}"\n`;
+                if (line != "デッキ" && line != "サイドボード") {
+                    errorDiv.textContent += `無効な行: "${line}"\n`;
+                }
             }
         }
 
+        const totalCards = cardMap.size; // 処理するカードの総数
+        let processedCards = 0;
+
+        // 進捗を更新する関数
+        const updateProgress = () => {
+            const percentage = totalCards > 0 ? Math.round((processedCards / totalCards) * 100) : 0;
+            progressText.textContent = `${targetBoard} 処理中: ${processedCards}/${totalCards} (${percentage}%)`;
+        };
+
         // カード画像のURLを取得
-        const cardPromises = Array.from(cardMap.entries()).map(async ([cardName, quantity], index) => {
+        const cardPromises = Array.from(cardMap.entries()).map(async ([key, { quantity, setCode, cardNo }], index) => {
+            const cardName = key.split('|')[0]; // 複合キーからcardNameを抽出
+            const imageUrl = await fetchCardImage(cardName, setCode, cardNo);
             await sleep(index * 100); // 1API毎に100ms遅延（Scryfall API利用規約）
-            const imageUrl = await fetchCardImage(cardName);
+            processedCards++;
+            updateProgress(); // 進捗を更新
             return { cardName, quantity, imageUrl };
         });
-
+    
         const cardResults = await Promise.all(cardPromises);
-
+    
         // 画像を表示
         cardResults.forEach(({ cardName, quantity, imageUrl }) => {
             const cardContainer = document.createElement("div");
             cardContainer.className = "card-container";
-
+    
             if (imageUrl) {
                 const img = document.createElement("img");
                 img.src = imageUrl;  // Blob URL（例: blob://...）
                 img.alt = cardName;
                 img.className = "card-image";
-                //img.crossOrigin = "Anonymous"; // CORS対策
                 cardContainer.appendChild(img);
             } else {
                 // カード画像のURLが取得できなかった場合は灰色の四角とカード名を表示する
@@ -180,32 +244,46 @@ async function generateDeckImages() {
                 placeholder.textContent = cardName;
                 cardContainer.appendChild(placeholder);
             }
-
+    
             const quantityDiv = document.createElement("div");
             quantityDiv.className = "card-quantity";
             quantityDiv.textContent = quantity;
-
+    
             cardContainer.appendChild(quantityDiv);
             targetDiv.appendChild(cardContainer);
-
+    
             if (!imageUrl) {
                 errorDiv.textContent += `「${cardName}」の画像を取得できませんでした。\n`;
             }
         });
-
-        return cardMap;
+    
+        // 合計枚数を計算するために、cardName単位でquantityを合算
+        const nameQuantityMap = new Map();
+        cardMap.forEach(({ quantity }, key) => {
+            const cardName = key.split('|')[0];
+            nameQuantityMap.set(cardName, (nameQuantityMap.get(cardName) || 0) + quantity);
+        });
+    
+        return nameQuantityMap; // cardName をキーとする数量マップを返す
     }
 
+    // カード画像取得開始時に「カード画像取得中...」を表示
+    progressDiv.style.display = "inline-block";
+    progressText.textContent = "処理中: 0/0 (0%)";
+
     // メインデッキとサイドボードを処理
-    const mainDeckMap = await processDeck(mainDeckLines, deckImagesDiv);
+    const mainDeckMap = await processDeck(mainDeckLines, deckImagesDiv, "メインデッキ");
     let mainDeckCount = 0;
     mainDeckMap.forEach(quantity => mainDeckCount += quantity);
 
     let sideboardCount = 0;
     if (sideboardLines.length > 0) {
-        const sideboardMap = await processDeck(sideboardLines, sideboardImagesDiv);
+        const sideboardMap = await processDeck(sideboardLines, sideboardImagesDiv, "サイドボード");
         sideboardMap.forEach(quantity => sideboardCount += quantity);
     }
+
+    // カード画像取得完了後に「カード画像取得中...」を非表示
+    progressDiv.style.display = "none";
 
     // タイトルに枚数を追加して表示
     deckSection.querySelector("h2").textContent = `メインデッキ (${mainDeckCount})`;
