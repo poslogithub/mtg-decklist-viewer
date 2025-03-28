@@ -3,33 +3,40 @@ body {
     margin: 20px;
     background-color: #ffffff; /* 背景色を明示的に指定（デフォルトは白色） */
 }
+
 #deckInput {
     width: 100%;
     height: 200px;
     margin-bottom: 10px;
 }
-.deck-section, .sideboard-section {
+
+.deck-section, .sideboard-section, .deck-section-mana-curve {
     margin-top: 20px;
 }
-.deck-section h2, .sideboard-section h2 {
+
+.deck-section h2, .sideboard-section h2, .deck-section-mana-curve h2 {
     font-size: 1.5em;
     margin-bottom: 10px;
 }
+
 .card-grid {
     display: flex;
     flex-wrap: wrap;
     gap: 10px;
 }
+
 .card-container {
     position: relative;
     width: 223px; /* Scryfallのsmallサイズ */
     height: 310px;
 }
+
 .card-image {
     width: 100%;
     height: 100%;
     object-fit: cover;
 }
+
 .card-quantity {
     position: absolute;
     top: 50px;
@@ -40,24 +47,86 @@ body {
     border-radius: 3px;
     font-size: 32px;
 }
+
 #error {
     color: red;
     margin-top: 10px;
 }
+
 .button-group {
     display: flex;
     gap: 10px;
     margin-bottom: 10px;
 }
-#downloadAllBtn {
-    display: none;
+
+.display-mode {
+    margin-bottom: 10px;
 }
+
 #progress {
     display: none;
     align-self: center;
     color: #666;
     font-size: 14px;
 }
+
 #progressText {
     font-weight: bold;
+}
+
+/* マナカーブ表示用のスタイル */
+.mana-curve-grid {
+    display: flex;
+    gap: 20px; /* non-landsとlandsの間の隙間 */
+}
+
+/* non-lands列（クリーチャーと非クリーチャーを含む） */
+.non-lands {
+    display: flex;
+    flex-direction: column;
+    gap: 20px; /* creaturesとnon-creaturesの間の隙間 */
+    flex: 1; /* 利用可能なスペースを埋める */
+}
+
+/* creatures行とnon-creatures行 */
+.creatures-row, .non-creatures-row {
+    display: flex;
+    gap: 10px; /* マナコストごとの列の間の隙間 */
+}
+
+/* lands列 */
+.lands-column {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 223px; /* カードの幅に合わせる */
+}
+
+.mana-column {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 223px; /* 固定幅 */
+}
+
+.mana-column-header {
+    font-weight: bold;
+    text-align: center;
+    margin-bottom: 5px;
+}
+
+.mana-section {
+    display: flex;
+    flex-direction: column;
+    position: relative; /* 重ねるためにrelativeを設定 */
+}
+
+/* カードを重ねるスタイル */
+.card-container.overlap {
+    position: relative;
+}
+
+/* クリーチャー、土地、非クリーチャーすべて下から上に重ねる */
+.mana-section .card-container.overlap:not(:first-child) {
+    margin-top: -272px; /* カードの高さ310pxの1/8（約38px）だけ重ねる */
 }

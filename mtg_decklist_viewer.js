@@ -37,14 +37,19 @@ async function fetchCardImage(cardName, setCode = null, cardNo = null) {
             if (imageUrl) {
                 const imageResponse = await fetch(imageUrl);
                 const imageBlob = await imageResponse.blob();
-                return URL.createObjectURL(imageBlob);
+                return {
+                    imageUrl: URL.createObjectURL(imageBlob),
+                    manaCost: data.cmc || 0, // マナコスト
+                    isCreature: data.type_line.includes("Creature"), // クリーチャーか否か
+                    isLand: data.type_line.includes("Land") // 土地か否か
+                };
             }
-            throw new Error(`「${cardName} (${setCode} #${cardNo})」のカード画像が見つかりませんでした`);
+            // throw new Error(`「${cardName} (${setCode} #${cardNo})」のカード画像が見つかりませんでした`);
         }
 
         // setCode/cardNoがない場合、または失敗した場合、カード名で検索（フォールバック）
         const baseUrl = `https://api.scryfall.com/cards/search?q=name:"${encodeURIComponent(isEnglishCard ? cardName : searchName)}"`;
-        const url = isEnglishCard ? baseUrl : `${baseUrl}+lang:japanese`
+        const url = isEnglishCard ? baseUrl : `${baseUrl}+lang:japanese`;
         response = await fetch(url);
         data = await response.json();
 
@@ -60,7 +65,12 @@ async function fetchCardImage(cardName, setCode = null, cardNo = null) {
                 if (imageUrl) {
                     const imageResponse = await fetch(imageUrl);
                     const imageBlob = await imageResponse.blob();
-                    return URL.createObjectURL(imageBlob);
+                    return {
+                        imageUrl: URL.createObjectURL(imageBlob),
+                        manaCost: exactMatch.cmc || 0,
+                        isCreature: exactMatch.type_line.includes("Creature"),
+                        isLand: exactMatch.type_line.includes("Land")
+                    };
                 }
                 return null;
             } else {
@@ -74,14 +84,24 @@ async function fetchCardImage(cardName, setCode = null, cardNo = null) {
                         // 両面カードの表面
                         const imageResponse = await fetch(imageUrl);
                         const imageBlob = await imageResponse.blob();
-                        return URL.createObjectURL(imageBlob);
+                        return {
+                            imageUrl: URL.createObjectURL(imageBlob),
+                            manaCost: faceMatch.cmc || 0,
+                            isCreature: faceMatch.type_line.includes("Creature"),
+                            isLand: faceMatch.type_line.includes("Land")
+                        };
                     } else {
                         imageUrl = faceMatch.image_uris?.png;
                         if (imageUrl) {
                             // 分割カードの第1面
                             const imageResponse = await fetch(imageUrl);
                             const imageBlob = await imageResponse.blob();
-                            return URL.createObjectURL(imageBlob);
+                            return {
+                                imageUrl: URL.createObjectURL(imageBlob),
+                                manaCost: faceMatch.cmc || 0,
+                                isCreature: faceMatch.type_line.includes("Creature"),
+                                isLand: faceMatch.type_line.includes("Land")
+                            };
                         }
                     }
                 }
@@ -94,15 +114,231 @@ async function fetchCardImage(cardName, setCode = null, cardNo = null) {
     }
 }
 
-// 全体を画像としてダウンロードする関数
+async function downloadSection(sectionId, fileName) {
+    const section = document.getElementById(sectionId);
+    try {
+        // セクションの幅と高さを計算
+        const cardWidth = 223; // カード1枚の幅
+        const cardHeight = 310; // カード1枚の高さ
+        const overlapHeight = cardHeight / 8; // 重ねる部分（カード高さの1/8）
+        const gap = 10; // カード間の隙間
+        const columnGap = 20; // non-landsとlandsの間の隙間
+        const rowGap = 20; // クリーチャー行と非クリーチャー行の間の隙間
+        const headerHeight = 50; // ヘッダーの高さ（見出しや余白）
+
+        // マナカーブ表示の場合、幅と高さを動的に計算
+        let totalWidth = 0;
+        let totalHeight = 0;
+
+        if (sectionId === 'deckSectionManaCurve') {
+            const nonLands = section.querySelector('.non-lands');
+            const landsColumn = section.querySelector('.lands-column');
+            const creaturesRow = nonLands.querySelector('.creatures-row');
+            const nonCreaturesRow = nonLands.querySelector('.non-creatures-row');
+
+            // 列の数（1以下, 2, 3, 4, 5, 6以上 の6列 + 土地列）
+            const numColumns = 7; // 6（マナコスト）+ 1（土地）
+            totalWidth = numColumns * cardWidth + (numColumns - 1) * gap + columnGap;
+
+            // 高さの計算：クリーチャー行、非クリーチャー行、土地列の高さを個別に計算
+            const creaturesHeight = creaturesRow ? Array.from(creaturesRow.querySelectorAll('.mana-column')).reduce((maxHeight, column) => {
+                const cards = column.querySelectorAll('.card-container').length;
+                return Math.max(maxHeight, cards > 0 ? cardHeight + (cards - 1) * overlapHeight : 0);
+            }, 0) : 0;
+
+            const nonCreaturesHeight = nonCreaturesRow ? Array.from(nonCreaturesRow.querySelectorAll('.mana-column')).reduce((maxHeight, column) => {
+                const cards = column.querySelectorAll('.card-container').length;
+                return Math.max(maxHeight, cards > 0 ? cardHeight + (cards - 1) * overlapHeight : 0);
+            }, 0) : 0;
+
+            const landsHeight = landsColumn ? landsColumn.querySelectorAll('.card-container').length > 0 ? cardHeight + (landsColumn.querySelectorAll('.card-container').length - 1) * overlapHeight : 0 : 0;
+
+            // クリーチャー行と非クリーチャー行の高さを合計し、間の隙間とヘッダー分の余裕を追加
+            totalHeight = creaturesHeight + nonCreaturesHeight + rowGap + headerHeight;
+            totalHeight = Math.max(totalHeight, landsHeight + headerHeight); // 土地列の高さとも比較
+            totalHeight += 20; // 追加の余白（下端が切れないように）
+            totalHeight += 30; // なんか下端が切れるから追加の余白
+        } else {
+            // タイル表示の場合
+            const cards = section.querySelectorAll('.card-container');
+            const numCards = cards.length;
+            const cardsPerRow = Math.floor((window.innerWidth - 20) / (cardWidth + gap)); // ビューポート幅での1行のカード数
+            const numRows = Math.ceil(numCards / cardsPerRow);
+            totalWidth = Math.min(numCards, cardsPerRow) * (cardWidth + gap);
+            totalHeight = numRows * (cardHeight + gap) + headerHeight;
+            totalHeight += 20; // 追加の余白（下端が切れないように）
+        }
+
+        // セクションのスタイルを一時的に変更してキャプチャ
+        const originalWidth = section.style.width;
+        const originalHeight = section.style.height;
+        const originalOverflow = section.style.overflow;
+
+        section.style.width = `${totalWidth}px`;
+        section.style.height = `${totalHeight}px`;
+        section.style.overflow = 'visible';
+
+        const canvas = await html2canvas(section, {
+            backgroundColor: '#ffffff',
+            scale: 1,
+            useCORS: true,
+            width: totalWidth,
+            height: totalHeight,
+            scrollX: 0,
+            scrollY: -window.scrollY,
+        });
+
+        // スタイルを元に戻す
+        section.style.width = originalWidth;
+        section.style.height = originalHeight;
+        section.style.overflow = originalOverflow;
+
+        const link = document.createElement('a');
+        link.href = canvas.toDataURL('image/png');
+        link.download = fileName;
+        link.click();
+    } catch (error) {
+        console.error('画像のダウンロードに失敗しました:', error);
+        alert('画像のダウンロードに失敗しました。カード画像が正しく読み込まれていない可能性があります。');
+    }
+}
+
 async function downloadAll() {
     const deckContainer = document.getElementById('deckContainer');
+    const deckSection = document.getElementById('deckSection');
+    const sideboardSection = document.getElementById('sideboardSection');
+    const deckSectionManaCurve = document.getElementById('deckSectionManaCurve');
+
     try {
+        // 現在の表示モードを取得
+        const displayMode = document.querySelector('input[name="displayMode"]:checked').value;
+
+        // 現在の表示状態を保存
+        const originalDeckDisplay = deckSection.style.display;
+        const originalSideboardDisplay = sideboardSection.style.display;
+        const originalManaCurveDisplay = deckSectionManaCurve.style.display;
+
+        // コンテナの幅と高さを計算
+        const cardWidth = 223; // カード1枚の幅
+        const cardHeight = 310; // カード1枚の高さ
+        const overlapHeight = cardHeight / 8; // 重ねる部分（カード高さの1/8）
+        const gap = 10; // カード間の隙間
+        const columnGap = 20; // non-landsとlandsの間の隙間
+        const rowGap = 20; // クリーチャー行と非クリーチャー行の間の隙間
+        const sectionGap = 20; // メインデッキとサイドボードの間の隙間
+        const headerHeight = 50; // ヘッダーの高さ（見出しや余白）
+        const extraBottomPadding = 20; // 下部に追加する余白
+
+        let totalWidth = 0;
+        let totalHeight = 0;
+
+        if (displayMode === "manaCurve") {
+            // マナカーブ表示モードの場合
+            deckSection.style.display = "none";
+            deckSectionManaCurve.style.display = deckSectionManaCurve.querySelector("#deckImagesManaCurve").children.length > 0 ? "block" : "none";
+            sideboardSection.style.display = sideboardSection.querySelector("#sideboardImages").children.length > 0 ? "block" : "none";
+
+            // マナカーブ表示の幅と高さを計算
+            if (deckSectionManaCurve.querySelector("#deckImagesManaCurve").children.length > 0) {
+                const nonLands = deckSectionManaCurve.querySelector('.non-lands');
+                const landsColumn = deckSectionManaCurve.querySelector('.lands-column');
+                const creaturesRow = nonLands.querySelector('.creatures-row');
+                const nonCreaturesRow = nonLands.querySelector('.non-creatures-row');
+
+                const numColumns = 7; // 6（マナコスト）+ 1（土地）
+                totalWidth = numColumns * cardWidth + (numColumns - 1) * gap + columnGap;
+
+                const creaturesHeight = creaturesRow ? Array.from(creaturesRow.querySelectorAll('.mana-column')).reduce((maxHeight, column) => {
+                    const cards = column.querySelectorAll('.card-container').length;
+                    return Math.max(maxHeight, cards > 0 ? cardHeight + (cards - 1) * overlapHeight : 0);
+                }, 0) : 0;
+    
+                const nonCreaturesHeight = nonCreaturesRow ? Array.from(nonCreaturesRow.querySelectorAll('.mana-column')).reduce((maxHeight, column) => {
+                    const cards = column.querySelectorAll('.card-container').length;
+                    return Math.max(maxHeight, cards > 0 ? cardHeight + (cards - 1) * overlapHeight : 0);
+                }, 0) : 0;
+    
+                const landsHeight = landsColumn ? landsColumn.querySelectorAll('.card-container').length > 0 ? cardHeight + (landsColumn.querySelectorAll('.card-container').length - 1) * overlapHeight : 0 : 0;
+    
+                totalHeight = creaturesHeight + nonCreaturesHeight + rowGap + headerHeight;
+                totalHeight = Math.max(totalHeight, landsHeight + headerHeight);
+                totalHeight += extraBottomPadding; // 調整済みの余白を追加
+            }
+
+            // サイドボードの幅と高さを計算（タイル表示）
+            if (sideboardSection.querySelector("#sideboardImages").children.length > 0) {
+                const cards = sideboardSection.querySelectorAll('.card-container');
+                const numCards = cards.length;
+                const cardsPerRow = Math.floor(totalWidth / (cardWidth + gap)); // メインデッキの幅に合わせて計算
+                const numRows = Math.ceil(numCards / cardsPerRow);
+                const sideboardWidth = Math.min(numCards, cardsPerRow) * (cardWidth + gap);
+                const sideboardHeight = numRows * (cardHeight + gap) + headerHeight;
+
+                totalWidth = Math.max(totalWidth, sideboardWidth);
+                totalHeight += sideboardHeight + sectionGap; // メインデッキとサイドボードの間の隙間
+                totalHeight += extraBottomPadding; // 調整済みの余白を追加
+            }
+        } else {
+            // タイル表示モードの場合
+            deckSection.style.display = deckSection.querySelector("#deckImages").children.length > 0 ? "block" : "none";
+            sideboardSection.style.display = sideboardSection.querySelector("#sideboardImages").children.length > 0 ? "block" : "none";
+            deckSectionManaCurve.style.display = "none";
+
+            // メインデッキの幅と高さを計算（タイル表示）
+            if (deckSection.querySelector("#deckImages").children.length > 0) {
+                const cards = deckSection.querySelectorAll('.card-container');
+                const numCards = cards.length;
+                const cardsPerRow = Math.floor((window.innerWidth - 20) / (cardWidth + gap)); // ビューポート幅での1行のカード数
+                const numRows = Math.ceil(numCards / cardsPerRow);
+                totalWidth = Math.min(numCards, cardsPerRow) * (cardWidth + gap);
+                totalHeight = numRows * (cardHeight + gap) + headerHeight;
+                totalHeight += extraBottomPadding; // 調整済みの余白を追加
+            }
+
+            // サイドボードの幅と高さを計算（タイル表示）
+            if (sideboardSection.querySelector("#sideboardImages").children.length > 0) {
+                const cards = sideboardSection.querySelectorAll('.card-container');
+                const numCards = cards.length;
+                const cardsPerRow = Math.floor(totalWidth / (cardWidth + gap)); // メインデッキの幅に合わせて計算
+                const numRows = Math.ceil(numCards / cardsPerRow);
+                const sideboardWidth = Math.min(numCards, cardsPerRow) * (cardWidth + gap);
+                const sideboardHeight = numRows * (cardHeight + gap) + headerHeight;
+
+                totalWidth = Math.max(totalWidth, sideboardWidth);
+                totalHeight += sideboardHeight + sectionGap; // メインデッキとサイドボードの間の隙間
+                totalHeight += extraBottomPadding; // 調整済みの余白を追加
+            }
+        }
+
+        // コンテナのスタイルを一時的に変更
+        const originalWidth = deckContainer.style.width;
+        const originalHeight = deckContainer.style.height;
+        const originalOverflow = deckContainer.style.overflow;
+
+        deckContainer.style.width = `${totalWidth}px`;
+        deckContainer.style.height = `${totalHeight}px`;
+        deckContainer.style.overflow = 'visible';
+
         const canvas = await html2canvas(deckContainer, {
             backgroundColor: '#ffffff', // bodyの背景色（白色）に合わせる
             scale: 1,
-            useCORS: true // 外部画像（カード画像）の読み込みを許可
+            useCORS: true,
+            width: totalWidth,
+            height: totalHeight,
+            scrollX: 0,
+            scrollY: -window.scrollY,
         });
+
+        // スタイルを元に戻す
+        deckContainer.style.width = originalWidth;
+        deckContainer.style.height = originalHeight;
+        deckContainer.style.overflow = originalOverflow;
+
+        // 表示状態を元に戻す
+        deckSection.style.display = originalDeckDisplay;
+        sideboardSection.style.display = originalSideboardDisplay;
+        deckSectionManaCurve.style.display = originalManaCurveDisplay;
+
         const link = document.createElement('a');
         link.href = canvas.toDataURL('image/png');
         link.download = 'deck-all.png';
@@ -113,13 +349,34 @@ async function downloadAll() {
     }
 }
 
+function toggleDisplayMode() {
+    const displayMode = document.querySelector('input[name="displayMode"]:checked').value;
+    const deckSection = document.getElementById("deckSection");
+    const sideboardSection = document.getElementById("sideboardSection");
+    const deckSectionManaCurve = document.getElementById("deckSectionManaCurve");
+
+    if (displayMode === "tile") {
+        deckSection.style.display = deckSection.querySelector("#deckImages").children.length > 0 ? "block" : "none";
+        sideboardSection.style.display = sideboardSection.querySelector("#sideboardImages").children.length > 0 ? "block" : "none";
+        deckSectionManaCurve.style.display = "none";
+    } else {
+        deckSection.style.display = "none";
+        sideboardSection.style.display = sideboardSection.querySelector("#sideboardImages").children.length > 0 ? "block" : "none";
+        deckSectionManaCurve.style.display = deckSectionManaCurve.querySelector("#deckImagesManaCurve").children.length > 0 ? "block" : "none";
+    }
+}
+
 async function generateDeckImages() {
     const deckInput = document.getElementById("deckInput").value.trim();
     const deckImagesDiv = document.getElementById("deckImages");
     const sideboardImagesDiv = document.getElementById("sideboardImages");
+    const deckImagesManaCurveDiv = document.getElementById("deckImagesManaCurve");
     const errorDiv = document.getElementById("error");
     const deckSection = document.getElementById("deckSection");
     const sideboardSection = document.getElementById("sideboardSection");
+    const deckSectionManaCurve = document.getElementById("deckSectionManaCurve");
+    const downloadMainBtn = document.getElementById("downloadMainBtn");
+    const downloadSideboardBtn = document.getElementById("downloadSideboardBtn");
     const downloadAllBtn = document.getElementById("downloadAllBtn");
     const progressDiv = document.getElementById("progress");
     const progressText = document.getElementById("progressText");
@@ -127,9 +384,13 @@ async function generateDeckImages() {
     // 初期化
     deckImagesDiv.innerHTML = "";
     sideboardImagesDiv.innerHTML = "";
+    deckImagesManaCurveDiv.innerHTML = "";
     errorDiv.textContent = "";
     deckSection.style.display = "none";
     sideboardSection.style.display = "none";
+    deckSectionManaCurve.style.display = "none";
+    downloadMainBtn.style.display = "none";
+    downloadSideboardBtn.style.display = "none";
     downloadAllBtn.style.display = "none";
     progressDiv.style.display = "none";
 
@@ -160,7 +421,7 @@ async function generateDeckImages() {
     }
 
     // カードリストを処理する関数
-    async function processDeck(lines, targetDiv, targetBoard = "") {
+    async function processDeck(lines, tileTargetDiv, manaCurveTargetDiv, targetBoard = "", isSideboard = false) {
         const cardMap = new Map(); // カード名と数量を管理
     
         for (const line of lines) {
@@ -193,7 +454,7 @@ async function generateDeckImages() {
                     cardMap.set(key, { quantity, setCode, cardNo });
                 }
             } else {
-                if (line != "デッキ" && line != "サイドボード") {
+                if (line != "デッキ" && line != "サイドボード" && line != "Deck" && line != "Sideboard") {
                     errorDiv.textContent += `無効な行: "${line}"\n`;
                 }
             }
@@ -211,16 +472,16 @@ async function generateDeckImages() {
         // カード画像のURLを取得
         const cardPromises = Array.from(cardMap.entries()).map(async ([key, { quantity, setCode, cardNo }], index) => {
             const cardName = key.split('|')[0]; // 複合キーからcardNameを抽出
-            const imageUrl = await fetchCardImage(cardName, setCode, cardNo);
+            const result = await fetchCardImage(cardName, setCode, cardNo);
             await sleep(index * 100); // 1API毎に100ms遅延（Scryfall API利用規約）
             processedCards++;
             updateProgress(); // 進捗を更新
-            return { cardName, quantity, imageUrl };
+            return { cardName, quantity, ...result };
         });
     
         const cardResults = await Promise.all(cardPromises);
     
-        // 画像を表示
+        // タイル表示
         cardResults.forEach(({ cardName, quantity, imageUrl }) => {
             const cardContainer = document.createElement("div");
             cardContainer.className = "card-container";
@@ -252,14 +513,128 @@ async function generateDeckImages() {
             quantityDiv.textContent = quantity;
     
             cardContainer.appendChild(quantityDiv);
-            targetDiv.appendChild(cardContainer);
+            tileTargetDiv.appendChild(cardContainer);
     
             if (!imageUrl) {
                 errorDiv.textContent += `「${cardName}」の画像を取得できませんでした。\n`;
             }
         });
     
-        // 合計枚数を計算するために、cardName単位でquantityを合算
+        // マナカーブ表示（メインデッキのみ）
+        if (!isSideboard) {
+            const manaCurveGroups = {
+                "-1": { creatures: [], nonCreatures: [] },
+                "2": { creatures: [], nonCreatures: [] },
+                "3": { creatures: [], nonCreatures: [] },
+                "4": { creatures: [], nonCreatures: [] },
+                "5": { creatures: [], nonCreatures: [] },
+                "6-": { creatures: [], nonCreatures: [] },
+                "lands": []
+            };
+
+            cardResults.forEach(({ cardName, quantity, imageUrl, manaCost, isCreature, isLand }) => {
+                if (!imageUrl) return;
+
+                let group;
+                if (isLand) {
+                    group = "lands";
+                } else {
+                    if (manaCost <= 1) group = "-1";
+                    else if (manaCost === 2) group = "2";
+                    else if (manaCost === 3) group = "3";
+                    else if (manaCost === 4) group = "4";
+                    else if (manaCost === 5) group = "5";
+                    else group = "6-";
+                }
+
+                // 複数枚表示のためにquantity分繰り返す
+                for (let i = 0; i < quantity; i++) {
+                    const cardContainer = document.createElement("div");
+                    cardContainer.className = "card-container overlap"; // 重ねるためのクラスを追加
+                    const img = document.createElement("img");
+                    img.src = imageUrl;
+                    img.alt = cardName;
+                    img.className = "card-image";
+                    cardContainer.appendChild(img);
+
+                    if (isLand) {
+                        manaCurveGroups[group].push(cardContainer);
+                    } else if (isCreature) {
+                        manaCurveGroups[group].creatures.push(cardContainer);
+                    } else {
+                        manaCurveGroups[group].nonCreatures.push(cardContainer);
+                    }
+                }
+            });
+
+            // マナカーブ表示の構築
+            const manaCurveGrid = document.createElement("div");
+            manaCurveGrid.className = "mana-curve-grid";
+
+            // non-landsコンテナ
+            const nonLands = document.createElement("div");
+            nonLands.className = "non-lands";
+
+            // creatures行
+            const creaturesRow = document.createElement("div");
+            creaturesRow.className = "creatures-row";
+            ["-1", "2", "3", "4", "5", "6-"].forEach(mana => {
+                const column = document.createElement("div");
+                column.className = "mana-column";
+
+                const header = document.createElement("div");
+                header.className = "mana-column-header";
+                header.textContent = mana;
+                column.appendChild(header);
+
+                const section = document.createElement("div");
+                section.className = "mana-section";
+                manaCurveGroups[mana].creatures.forEach(card => section.appendChild(card));
+                column.appendChild(section);
+
+                creaturesRow.appendChild(column);
+            });
+            nonLands.appendChild(creaturesRow);
+
+            // non-creatures行
+            const nonCreaturesRow = document.createElement("div");
+            nonCreaturesRow.className = "non-creatures-row";
+            ["-1", "2", "3", "4", "5", "6-"].forEach(mana => {
+                const column = document.createElement("div");
+                column.className = "mana-column";
+
+                const header = document.createElement("div");
+                header.className = "mana-column-header";
+                header.textContent = mana;
+                column.appendChild(header);
+
+                const section = document.createElement("div");
+                section.className = "mana-section";
+                manaCurveGroups[mana].nonCreatures.forEach(card => section.appendChild(card));
+                column.appendChild(section);
+
+                nonCreaturesRow.appendChild(column);
+            });
+            nonLands.appendChild(nonCreaturesRow);
+
+            manaCurveGrid.appendChild(nonLands);
+
+            // 土地の列
+            const landsColumn = document.createElement("div");
+            landsColumn.className = "lands-column";
+            const landsHeader = document.createElement("div");
+            landsHeader.className = "mana-column-header";
+            landsHeader.textContent = "Land";
+            landsColumn.appendChild(landsHeader);
+            const landsSection = document.createElement("div");
+            landsSection.className = "mana-section";
+            manaCurveGroups["lands"].forEach(card => landsSection.appendChild(card));
+            landsColumn.appendChild(landsSection);
+            manaCurveGrid.appendChild(landsColumn);
+
+            manaCurveTargetDiv.appendChild(manaCurveGrid);
+        }
+
         const nameQuantityMap = new Map();
         cardMap.forEach(({ quantity }, key) => {
             const cardName = key.split('|')[0];
@@ -274,13 +649,13 @@ async function generateDeckImages() {
     progressText.textContent = "処理中: 0/0 (0%)";
 
     // メインデッキとサイドボードを処理
-    const mainDeckMap = await processDeck(mainDeckLines, deckImagesDiv, "メインデッキ");
+    const mainDeckMap = await processDeck(mainDeckLines, deckImagesDiv, deckImagesManaCurveDiv, "メインデッキ");
     let mainDeckCount = 0;
     mainDeckMap.forEach(quantity => mainDeckCount += quantity);
 
     let sideboardCount = 0;
     if (sideboardLines.length > 0) {
-        const sideboardMap = await processDeck(sideboardLines, sideboardImagesDiv, "サイドボード");
+        const sideboardMap = await processDeck(sideboardLines, sideboardImagesDiv, null, "サイドボード", true);
         sideboardMap.forEach(quantity => sideboardCount += quantity);
     }
 
@@ -289,19 +664,35 @@ async function generateDeckImages() {
 
     // タイトルに枚数を追加して表示
     deckSection.querySelector("h2").textContent = `メインデッキ (${mainDeckCount})`;
-    deckSection.style.display = "block";
+    deckSectionManaCurve.querySelector("h2").textContent = `メインデッキ (${mainDeckCount})`;
 
     if (sideboardCount > 0) {
         sideboardSection.querySelector("h2").textContent = `サイドボード (${sideboardCount})`;
-        sideboardSection.style.display = "block";
     }
 
     // メインデッキが生成されたらダウンロードボタンを表示
     if (mainDeckCount > 0) {
+        downloadMainBtn.style.display = "inline-block";
+    }
+    if (sideboardCount > 0) {
+        downloadSideboardBtn.style.display = "inline-block";
+    }
+    if (mainDeckCount > 0 || sideboardCount > 0) {
         downloadAllBtn.style.display = "inline-block";
     }
+
+    toggleDisplayMode();
 }
 
 // イベントリスナーを追加
 document.getElementById('generateBtn').addEventListener('click', generateDeckImages);
+document.getElementById('downloadMainBtn').addEventListener('click', () => {
+    const displayMode = document.querySelector('input[name="displayMode"]:checked').value;
+    const sectionId = displayMode === "tile" ? 'deckSection' : 'deckSectionManaCurve';
+    downloadSection(sectionId, 'main-deck.png');
+});
+document.getElementById('downloadSideboardBtn').addEventListener('click', () => downloadSection('sideboardSection', 'sideboard.png'));
 document.getElementById('downloadAllBtn').addEventListener('click', downloadAll);
+document.querySelectorAll('input[name="displayMode"]').forEach(radio => {
+    radio.addEventListener('change', toggleDisplayMode);
+});

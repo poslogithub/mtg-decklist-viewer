@@ -1,2 +1,5 @@
 *.txt
 *.ps1
+mtg_decklist_viewer copy.css
+mtg_decklist_viewer copy.html
+mtg_decklist_viewer copy.js

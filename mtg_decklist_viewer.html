@@ -24,15 +24,32 @@
         <div id="progress" style="display: none; align-self: center;">
             <span id="progressText">処理中: 0/0 (0%)</span>
         </div>
-        <button id="downloadAllBtn">デッキ全体を画像としてダウンロード</button>
+    </div>
+    <!-- 表示形式の選択 -->
+    <div class="display-mode">
+        <label><input type="radio" name="displayMode" value="tile" checked> タイル表示</label>
+        <label><input type="radio" name="displayMode" value="manaCurve"> マナカーブ表示</label>
+    </div>
+    <!-- ダウンロードボタン -->
+    <div class="button-group">
+        <button id="downloadMainBtn" style="display: none;">メインデッキ画像のみダウンロード</button>
+        <button id="downloadSideboardBtn" style="display: none;">サイドボード画像のみダウンロード</button>
+        <button id="downloadAllBtn" style="display: none;">メインデッキとサイドボードの両方の画像をダウンロード</button>
     </div>
     <div id="error"></div>
     <div id="deckContainer">
-        <div id="deckSection" class="deck-section">
+        <!-- タイル表示用のセクション -->
+        <div id="deckSection" class="deck-section" style="display: none;">
             <h2>メインデッキ</h2>
             <div id="deckImages" class="card-grid"></div>
         </div>
-        <div id="sideboardSection" class="sideboard-section">
+        <!-- マナカーブ表示用のセクション（メインデッキのみ） -->
+        <div id="deckSectionManaCurve" class="deck-section-mana-curve" style="display: none;">
+            <h2>メインデッキ（マナカーブ）</h2>
+            <div id="deckImagesManaCurve" class="mana-curve-grid"></div>
+        </div>
+        <!-- サイドボードはメインデッキの下に配置（タイル表示のみ） -->
+        <div id="sideboardSection" class="sideboard-section" style="display: none;">
             <h2>サイドボード</h2>
             <div id="sideboardImages" class="card-grid"></div>
         </div>
