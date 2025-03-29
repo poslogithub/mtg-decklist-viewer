@@ -120,11 +120,11 @@ async function downloadSection(sectionId, fileName) {
         // セクションの幅と高さを計算
         const cardWidth = 223; // カード1枚の幅
         const cardHeight = 310; // カード1枚の高さ
-        const overlapHeight = cardHeight / 8; // 重ねる部分（カード高さの1/8）
         const gap = 10; // カード間の隙間
         const columnGap = 20; // non-landsとlandsの間の隙間
         const rowGap = 20; // クリーチャー行と非クリーチャー行の間の隙間
         const headerHeight = 50; // ヘッダーの高さ（見出しや余白）
+        const extraBottomPadding = 20;
 
         // マナカーブ表示の場合、幅と高さを動的に計算
         let totalWidth = 0;
@@ -140,7 +140,10 @@ async function downloadSection(sectionId, fileName) {
             const numColumns = 7; // 6（マナコスト）+ 1（土地）
             totalWidth = numColumns * cardWidth + (numColumns - 1) * gap + columnGap;
 
-            // 高さの計算：クリーチャー行、非クリーチャー行、土地列の高さを個別に計算
+            // 現在の重ね幅を取得
+            const overlapOffset = parseInt(getComputedStyle(section.querySelector('.mana-section')).getPropertyValue('--overlap-offset')) || -272;
+            const overlapHeight = overlapOffset + cardHeight; // 重なる部分の高さ（正の値）
+
             const creaturesHeight = creaturesRow ? Array.from(creaturesRow.querySelectorAll('.mana-column')).reduce((maxHeight, column) => {
                 const cards = column.querySelectorAll('.card-container').length;
                 return Math.max(maxHeight, cards > 0 ? cardHeight + (cards - 1) * overlapHeight : 0);
@@ -156,8 +159,8 @@ async function downloadSection(sectionId, fileName) {
             // クリーチャー行と非クリーチャー行の高さを合計し、間の隙間とヘッダー分の余裕を追加
             totalHeight = creaturesHeight + nonCreaturesHeight + rowGap + headerHeight;
             totalHeight = Math.max(totalHeight, landsHeight + headerHeight); // 土地列の高さとも比較
-            totalHeight += 20; // 追加の余白（下端が切れないように）
-            totalHeight += 30; // なんか下端が切れるから追加の余白
+            totalHeight += extraBottomPadding;
+            totalHeight += 50; // なんか下端が切れるから追加の余白
         } else {
             // タイル表示の場合
             const cards = section.querySelectorAll('.card-container');
@@ -166,7 +169,7 @@ async function downloadSection(sectionId, fileName) {
             const numRows = Math.ceil(numCards / cardsPerRow);
             totalWidth = Math.min(numCards, cardsPerRow) * (cardWidth + gap);
             totalHeight = numRows * (cardHeight + gap) + headerHeight;
-            totalHeight += 20; // 追加の余白（下端が切れないように）
+            totalHeight += extraBottomPadding; // 追加の余白（下端が切れないように）
         }
 
         // セクションのスタイルを一時的に変更してキャプチャ
@@ -248,6 +251,9 @@ async function downloadAll() {
                 const numColumns = 7; // 6（マナコスト）+ 1（土地）
                 totalWidth = numColumns * cardWidth + (numColumns - 1) * gap + columnGap;
 
+                const overlapOffset = parseInt(getComputedStyle(deckSectionManaCurve.querySelector('.mana-section')).getPropertyValue('--overlap-offset')) || -272;
+                const overlapHeight = overlapOffset + cardHeight;
+
                 const creaturesHeight = creaturesRow ? Array.from(creaturesRow.querySelectorAll('.mana-column')).reduce((maxHeight, column) => {
                     const cards = column.querySelectorAll('.card-container').length;
                     return Math.max(maxHeight, cards > 0 ? cardHeight + (cards - 1) * overlapHeight : 0);
@@ -277,6 +283,7 @@ async function downloadAll() {
                 totalWidth = Math.max(totalWidth, sideboardWidth);
                 totalHeight += sideboardHeight + sectionGap; // メインデッキとサイドボードの間の隙間
                 totalHeight += extraBottomPadding; // 調整済みの余白を追加
+                totalHeight += 30; // なんか下端が切れるから追加の余白
             }
         } else {
             // タイル表示モードの場合
@@ -354,15 +361,18 @@ function toggleDisplayMode() {
     const deckSection = document.getElementById("deckSection");
     const sideboardSection = document.getElementById("sideboardSection");
     const deckSectionManaCurve = document.getElementById("deckSectionManaCurve");
+    const overlapControl = document.querySelector('.overlap-control');
 
     if (displayMode === "tile") {
         deckSection.style.display = deckSection.querySelector("#deckImages").children.length > 0 ? "block" : "none";
         sideboardSection.style.display = sideboardSection.querySelector("#sideboardImages").children.length > 0 ? "block" : "none";
         deckSectionManaCurve.style.display = "none";
+        overlapControl.style.display = "none"; // タイル表示では非表示
     } else {
         deckSection.style.display = "none";
         sideboardSection.style.display = sideboardSection.querySelector("#sideboardImages").children.length > 0 ? "block" : "none";
         deckSectionManaCurve.style.display = deckSectionManaCurve.querySelector("#deckImagesManaCurve").children.length > 0 ? "block" : "none";
+        overlapControl.style.display = "block"; // マナカーブ表示で表示
     }
 }
 
@@ -695,4 +705,17 @@ document.getElementById('downloadSideboardBtn').addEventListener('click', () => 
 document.getElementById('downloadAllBtn').addEventListener('click', downloadAll);
 document.querySelectorAll('input[name="displayMode"]').forEach(radio => {
     radio.addEventListener('change', toggleDisplayMode);
+});
+
+// スライダーの値で重ね幅を更新
+const overlapSlider = document.getElementById('overlapSlider');
+const overlapValue = document.getElementById('overlapValue');
+
+overlapSlider.addEventListener('input', () => {
+    const value = parseInt(overlapSlider.value); // 実際の値（-310 から 0）
+    const displayValue = value + 310; // 表示値（0 から 310）
+    overlapValue.textContent = displayValue;
+    document.querySelectorAll('.mana-section').forEach(section => {
+        section.style.setProperty('--overlap-offset', `${value}px`);
+    });
 });

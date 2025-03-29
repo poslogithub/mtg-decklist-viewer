@@ -22,13 +22,19 @@
     <div class="button-group">
         <button id="generateBtn">デッキ画像を生成</button>
         <div id="progress" style="display: none; align-self: center;">
-            <span id="progressText">処理中: 0/0 (0%)</span>
+            <span id="progressText">処理中: -/- (-%)</span>
         </div>
     </div>
     <!-- 表示形式の選択 -->
     <div class="display-mode">
         <label><input type="radio" name="displayMode" value="tile" checked> タイル表示</label>
         <label><input type="radio" name="displayMode" value="manaCurve"> マナカーブ表示</label>
+    </div>
+    <!-- カードずらし幅調整ボタン -->
+    <div class="overlap-control">
+        <label for="overlapSlider">カードの重ね幅調整 (px):</label>
+        <input type="range" id="overlapSlider" min="-276" max="-118" value="-272" step="1">
+        <span id="overlapValue">38</span>
     </div>
     <!-- ダウンロードボタン -->
     <div class="button-group">

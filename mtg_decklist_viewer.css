@@ -118,15 +118,19 @@ body {
 .mana-section {
     display: flex;
     flex-direction: column;
-    position: relative; /* 重ねるためにrelativeを設定 */
-}
-
-/* カードを重ねるスタイル */
-.card-container.overlap {
     position: relative;
+    --overlap-offset: -272px; /* 初期値 */
 }
 
-/* クリーチャー、土地、非クリーチャーすべて下から上に重ねる */
 .mana-section .card-container.overlap:not(:first-child) {
-    margin-top: -272px; /* カードの高さ310pxの1/8（約38px）だけ重ねる */
+    margin-top: var(--overlap-offset); /* 動的に変更可能 */
+}
+
+.overlap-control {
+    margin-bottom: 10px;
+    display: none; /* 初期状態では非表示 */
+}
+
+#overlapSlider {
+    width: 474px; /* スライダーの長さを伸ばす */
 }
