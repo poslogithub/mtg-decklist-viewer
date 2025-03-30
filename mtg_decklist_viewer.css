@@ -77,14 +77,14 @@ body {
 /* マナカーブ表示用のスタイル */
 .mana-curve-grid {
     display: flex;
-    gap: 20px; /* non-landsとlandsの間の隙間 */
+    gap: 10px; /* non-landsとlandsの間の隙間 */
 }
 
 /* non-lands列（クリーチャーと非クリーチャーを含む） */
 .non-lands {
     display: flex;
     flex-direction: column;
-    gap: 20px; /* creaturesとnon-creaturesの間の隙間 */
+    gap: 10px; /* creaturesとnon-creaturesの間の隙間 */
     flex: 1; /* 利用可能なスペースを埋める */
 }
 

@@ -613,11 +613,6 @@ async function generateDeckImages() {
                 const column = document.createElement("div");
                 column.className = "mana-column";
 
-                const header = document.createElement("div");
-                header.className = "mana-column-header";
-                header.textContent = mana;
-                column.appendChild(header);
-
                 const section = document.createElement("div");
                 section.className = "mana-section";
                 manaCurveGroups[mana].nonCreatures.forEach(card => section.appendChild(card));
