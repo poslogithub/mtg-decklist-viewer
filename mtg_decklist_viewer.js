@@ -767,14 +767,16 @@ async function generateDeckImages() {
     }
 
     // メインデッキが生成されたらダウンロードボタンを表示
-    if (mainDeckCount > 0) {
-        downloadMainBtn.style.display = "inline-block";
-    }
-    if (sideboardCount > 0) {
-        downloadSideboardBtn.style.display = "inline-block";
-    }
-    if (mainDeckCount > 0 || sideboardCount > 0) {
-        downloadAllBtn.style.display = "inline-block";
+    if (document.querySelector('input[name="displayMode"]:checked').value != "dancing") {
+        if (mainDeckCount > 0) {
+            downloadMainBtn.style.display = "inline-block";
+        }
+        if (sideboardCount > 0) {
+            downloadSideboardBtn.style.display = "inline-block";
+        }
+        if (mainDeckCount > 0 || sideboardCount > 0) {
+            downloadAllBtn.style.display = "inline-block";
+        }
     }
 
     toggleDisplayMode();
