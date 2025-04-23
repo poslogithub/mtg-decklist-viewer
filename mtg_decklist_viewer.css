@@ -134,3 +134,62 @@ body {
 #overlapSlider {
     width: 474px; /* スライダーの長さを伸ばす */
 }
+
+/* 踊るデッキ表示用のスタイル */
+.deck-section-dancing {
+    margin-top: 20px;
+}
+
+.dancing-deck-grid {
+    width: 960px;
+    height: 720px;
+    position: relative;
+    background-color: #f0f0f0; /* 領域を視認しやすくするための背景色 */
+    overflow: hidden; /* カードが領域外に出ないように */
+    display: flex;
+    flex-direction: column;
+    gap: 4px; /* 行間 */
+}
+
+.dancing-row {
+    position: relative;
+    display: flex;
+    align-items: center;
+    overflow: hidden;
+}
+
+.dancing-row.mythic-rare {
+    height: 200px;
+}
+
+.dancing-row.uncommon {
+    height: 180px;
+}
+
+.dancing-row.common {
+    height: 160px;
+}
+
+.dancing-row.land {
+    height: 160px;
+}
+
+.dancing-card-container {
+    position: absolute;
+    width: 115px; /* 高さ160pxに合わせて縦横比を維持（223/310 = 115/160） */
+    height: 160px;
+    transition: transform 0.016s linear; /* 60fpsでスムーズなアニメーション */
+}
+
+.dancing-card-container img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.dancing-card-container .card-quantity {
+    top: 25px; /* 高さ160pxに合わせて調整 */
+    left: 3px;
+    font-size: 16px; /* カードサイズに合わせて縮小 */
+    padding: 1px 3px;
+}

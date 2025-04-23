@@ -29,6 +29,7 @@
     <div class="display-mode">
         <label><input type="radio" name="displayMode" value="tile" checked> タイル表示</label>
         <label><input type="radio" name="displayMode" value="manaCurve"> マナカーブ表示</label>
+        <label><input type="radio" name="displayMode" value="dancing"> 踊るデッキ表示</label>
     </div>
     <!-- カードずらし幅調整ボタン -->
     <div class="overlap-control">
@@ -53,6 +54,11 @@
         <div id="deckSectionManaCurve" class="deck-section-mana-curve" style="display: none;">
             <h2>メインデッキ（マナカーブ）</h2>
             <div id="deckImagesManaCurve" class="mana-curve-grid"></div>
+        </div>
+        <!-- 踊るデッキ表示用のセクション -->
+        <div id="deckSectionDancing" class="deck-section-dancing" style="display: none;">
+            <h2>メインデッキ（踊るデッキ）</h2>
+            <div id="deckImagesDancing" class="dancing-deck-grid"></div>
         </div>
         <!-- サイドボードはメインデッキの下に配置（タイル表示のみ） -->
         <div id="sideboardSection" class="sideboard-section" style="display: none;">
