@@ -195,6 +195,10 @@ body {
 }
 
 .deck-section-jumping {
+    margin-top: 20px;
+}
+
+.jumping-deck-grid {
     width: 960px;
     height: 720px;
     position: relative;
