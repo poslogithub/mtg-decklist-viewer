@@ -12,6 +12,7 @@
     ">
     <title>MTGデッキ画像生成</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>  <!-- html2canvasライブラリ -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.js"></script> <!-- gif.jsライブラリ -->
     <link rel="stylesheet" href="/mtg-decklist-viewer/mtg_decklist_viewer.css">
 </head>
 <body>
@@ -30,6 +31,7 @@
         <label><input type="radio" name="displayMode" value="tile" checked> タイル表示</label>
         <label><input type="radio" name="displayMode" value="manaCurve"> マナカーブ表示</label>
         <label><input type="radio" name="displayMode" value="dancing"> 踊るデッキ表示</label>
+        <label><input type="radio" name="displayMode" value="jumping"> 跳ぶデッキ表示</label>
     </div>
     <!-- カードずらし幅調整ボタン -->
     <div class="overlap-control">
@@ -42,6 +44,7 @@
         <button id="downloadMainBtn" style="display: none;">メインデッキ画像のみダウンロード</button>
         <button id="downloadSideboardBtn" style="display: none;">サイドボード画像のみダウンロード</button>
         <button id="downloadAllBtn" style="display: none;">メインデッキとサイドボードの両方の画像をダウンロード</button>
+        <button id="downloadDancingBtn" style="display: none;">踊るデッキGIFをダウンロード</button>
     </div>
     <div id="error"></div>
     <div id="deckContainer">
@@ -59,6 +62,11 @@
         <div id="deckSectionDancing" class="deck-section-dancing" style="display: none;">
             <h2>メインデッキ（踊るデッキ）</h2>
             <div id="deckImagesDancing" class="dancing-deck-grid"></div>
+        </div>
+        <!-- 跳ぶデッキ表示用のセクション -->
+        <div id="deckSectionJumping" class="deck-section-jumping" style="display: none;">
+            <h2>メインデッキ（跳ぶデッキ）</h2>
+            <div id="deckImagesJumping" class="jumping-deck-grid"></div>
         </div>
         <!-- サイドボードはメインデッキの下に配置（タイル表示のみ） -->
         <div id="sideboardSection" class="sideboard-section" style="display: none;">

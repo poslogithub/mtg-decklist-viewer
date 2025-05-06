@@ -2,6 +2,26 @@ function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+function isCreature(type_line) { return type_line.includes("Creature"); }
+function isLand(type_line) { return type_line.includes("Land"); }
+function isSorcery(type_line) { return type_line.includes("Sorcery"); }
+function isEnchantment(type_line) { return type_line.includes("Enchantment"); }
+function isArtifact(type_line) { return type_line.includes("Artifact"); }
+function isInstant(type_line) { return type_line.includes("Instant"); }
+function isPlaneswalker(type_line) { return type_line.includes("Planeswalker"); }
+function isBattle(type_line) { return type_line.includes("Battle"); }
+
+async function getCardImageData(imageUrl, data) {
+    const imageResponse = await fetch(imageUrl);
+    const imageBlob = await imageResponse.blob();
+    return {
+        imageUrl: URL.createObjectURL(imageBlob),
+        manaCost: data.cmc || 0, // マナコスト
+        type_line: data.type_line, // タイプ行
+        rarity: data.rarity // レアリティ
+    };
+}
+
 async function fetchCardImage(cardName, setCode = null, cardNo = null) {
     try {
         let imageUrl;
@@ -35,15 +55,7 @@ async function fetchCardImage(cardName, setCode = null, cardNo = null) {
                 imageUrl = data.card_faces[0].image_uris?.png;
             }
             if (imageUrl) {
-                const imageResponse = await fetch(imageUrl);
-                const imageBlob = await imageResponse.blob();
-                return {
-                    imageUrl: URL.createObjectURL(imageBlob),
-                    manaCost: data.cmc || 0, // マナコスト
-                    isCreature: data.type_line.includes("Creature"), // クリーチャーか否か
-                    isLand: data.type_line.includes("Land"), // 土地か否か
-                    rarity: data.rarity // レアリティ
-                };
+                return await getCardImageData(imageUrl, data);
             }
             // throw new Error(`「${cardName} (${setCode} #${cardNo})」のカード画像が見つかりませんでした`);
         }
@@ -64,15 +76,7 @@ async function fetchCardImage(cardName, setCode = null, cardNo = null) {
                 // 通常のカードの場合
                 imageUrl = exactMatch.image_uris?.png;
                 if (imageUrl) {
-                    const imageResponse = await fetch(imageUrl);
-                    const imageBlob = await imageResponse.blob();
-                    return {
-                        imageUrl: URL.createObjectURL(imageBlob),
-                        manaCost: exactMatch.cmc || 0,
-                        isCreature: exactMatch.type_line.includes("Creature"),
-                        isLand: exactMatch.type_line.includes("Land"),
-                        rarity: exactMatch.rarity
-                    };
+                    return await getCardImageData(imageUrl, exactMatch);
                 }
                 return null;
             } else {
@@ -84,28 +88,12 @@ async function fetchCardImage(cardName, setCode = null, cardNo = null) {
                     imageUrl = faceMatch.card_faces[0].image_uris?.png;
                     if (imageUrl) {
                         // 両面カードの表面
-                        const imageResponse = await fetch(imageUrl);
-                        const imageBlob = await imageResponse.blob();
-                        return {
-                            imageUrl: URL.createObjectURL(imageBlob),
-                            manaCost: faceMatch.cmc || 0,
-                            isCreature: faceMatch.type_line.includes("Creature"),
-                            isLand: faceMatch.type_line.includes("Land"),
-                            rarity: faceMatch.rarity
-                        };
+                        return await getCardImageData(imageUrl, faceMatch);
                     } else {
                         imageUrl = faceMatch.image_uris?.png;
                         if (imageUrl) {
                             // 分割カードの第1面
-                            const imageResponse = await fetch(imageUrl);
-                            const imageBlob = await imageResponse.blob();
-                            return {
-                                imageUrl: URL.createObjectURL(imageBlob),
-                                manaCost: faceMatch.cmc || 0,
-                                isCreature: faceMatch.type_line.includes("Creature"),
-                                isLand: faceMatch.type_line.includes("Land"),
-                                rarity: faceMatch.rarity
-                            };
+                            return await getCardImageData(imageUrl, faceMatch);
                         }
                     }
                 }
@@ -115,6 +103,196 @@ async function fetchCardImage(cardName, setCode = null, cardNo = null) {
     } catch (error) {
         console.error(error);
         return null;
+    }
+}
+
+/**
+ * 跳ぶデッキ表示を構築
+ * @param {Array} cardResults - カード情報の配列
+ */
+function buildJumpingDeck(cardResults) {
+    const jumpingTargetDiv = document.getElementById("deckImagesJumping");
+    jumpingTargetDiv.innerHTML = ""; // 初期化
+
+    const rarityGroups = {
+        mythic: [],
+        rare: [],
+        uncommon: [],
+        common: [],
+        land: []
+    };
+
+    // カードをレアリティごとに分類
+    cardResults.forEach(({ cardName, quantity, imageUrl, type_line, rarity }) => {
+        if (!imageUrl) return;
+
+        let group;
+        if (isLand(type_line)) {
+            group = "land";
+        } else {
+            group = rarity || "common";
+        }
+
+        for (let i = 0; i < quantity; i++) {
+            const cardContainer = document.createElement("div");
+            cardContainer.className = "jumping-card-container";
+            const img = document.createElement("img");
+            img.src = imageUrl;
+            img.alt = cardName;
+            cardContainer.appendChild(img);
+
+            rarityGroups[group].push({
+                element: cardContainer,
+                name: cardName,
+                rarity: group
+            });
+        }
+    });
+
+    // 土地カードを描画範囲の最下部に等間隔で配置
+    const landCards = rarityGroups.land;
+    const landSpacing = landCards.length > 1 ? 960 / (landCards.length - 1) : 0;
+    landCards.forEach((card, index) => {
+        const x = landCards.length > 1 ? index * landSpacing : 480; // 中央に配置
+        card.element.style.left = `${x}px`;
+        card.element.style.bottom = "0px";
+        jumpingTargetDiv.appendChild(card.element);
+    });
+
+    // 土地以外のカードを描画範囲内に配置
+    ["mythic", "rare", "uncommon", "common"].forEach(rarity => {
+        rarityGroups[rarity].forEach((card, index) => {
+            const x = Math.random() * (960 - 115); // 描画範囲内でランダムなX座標
+            card.element.style.left = `${x}px`;
+            card.element.style.bottom = "160px"; // 土地カードの上部を地面とみなす
+            card.element.dataset.x = x;
+            card.element.dataset.y = 160; // 初期高さ
+            card.element.dataset.direction = Math.random() < 0.5 ? "left" : "right";
+            card.element.dataset.velocityY = 0; // 初期の垂直速度
+            jumpingTargetDiv.appendChild(card.element);
+        });
+    });
+
+    // アニメーション開始
+    animateJumpingCards(rarityGroups);
+}
+
+function animateJumpingCards(rarityGroups) {
+    const speeds = {
+        common: 120, // px/s
+        uncommon: 240,
+        rare: 360,
+        mythic: 480
+    };
+
+    const jumpSettings = {
+        common: { period: 3.1, coefficient: 60 }, 
+        uncommon: { period: 3.4, coefficient: 160 }, 
+        rare: { period: 3.7, coefficient: 260 }, 
+        mythic: { period: 4, coefficient: 360 }
+    };
+
+    function update() {
+        const now = performance.now() / 1000; // 秒単位の現在時刻
+
+        Object.entries(rarityGroups).forEach(([rarity, cards]) => {
+            const settings = jumpSettings[rarity];
+            if (!settings) return;
+
+            cards.forEach(card => {
+                const element = card.element;
+                let x = parseFloat(element.dataset.x);
+                const direction = element.dataset.direction;
+                const speed = speeds[rarity] || 0;
+
+                // 横移動
+                const deltaX = speed * (direction === "left" ? -1 : 1) * (1 / 60); // 60fpsでの移動量
+                x += deltaX;
+
+                // 端にぶつかった場合
+                if (x <= 0 || x >= 960 - 115) { // カード幅115pxを考慮
+                    element.dataset.direction = direction === "left" ? "right" : "left";
+                    x = Math.max(0, Math.min(x, 960 - 115));
+                }
+
+                element.dataset.x = x;
+                element.style.left = `${x}px`;
+
+                // 垂直移動（サイン波による跳ねる動き）
+                const initialPhase = parseFloat(element.dataset.initialPhase) || Math.random() * 2 * Math.PI; // ランダムな初期位相
+                element.dataset.initialPhase = initialPhase; // 初期位相を保存
+                const y = Math.abs(Math.sin((2 * Math.PI * now) / settings.period + initialPhase)) * settings.coefficient + 160; // 地面の高さを160pxとする
+                element.style.bottom = `${y}px`;
+            });
+        });
+
+        requestAnimationFrame(update);
+    }
+
+    requestAnimationFrame(update);
+}
+/**
+ * 踊るデッキ表示をGIFとしてダウンロード
+ * @param {string} sectionId - 踊るデッキ表示のセクションID
+ * @param {string} fileName - ダウンロードするGIFファイル名
+ */
+async function downloadDancingDeckGIF(sectionId, fileName) {
+    const section = document.getElementById(sectionId);
+    try {
+        const gif = new GIF({
+            workers: 2,
+            quality: 10,
+            workerScript: 'https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.worker.js'
+        });
+
+        // セクションのスタイルを一時的に変更してキャプチャ
+        const originalOverflow = section.style.overflow;
+        section.style.overflow = 'visible';
+
+        // 1秒間のアニメーションを生成（30FPSで30フレーム）
+        for (let i = 0; i < 30; i++) {
+            // アニメーションの動きをシミュレート（例: カードをランダムに動かす）
+            Array.from(section.querySelectorAll('.dancing-card-container')).forEach(card => {
+                const x = parseFloat(card.dataset.x) || 0;
+                const direction = card.dataset.direction || 'right';
+                const speed = 2; // カードの移動速度
+
+                // 左右移動
+                const newX = direction === 'right' ? x + speed : x - speed;
+                card.dataset.x = newX;
+                card.style.left = `${newX}px`;
+
+                // 端に到達したら方向を反転
+                if (newX <= 0 || newX >= 960 - 115) { // 960px幅 - カード幅115px
+                    card.dataset.direction = direction === 'right' ? 'left' : 'right';
+                }
+            });
+
+            // 現在の状態をキャプチャ
+            const canvas = await html2canvas(section, {
+                backgroundColor: '#ffffff',
+                scale: 1,
+                useCORS: true
+            });
+
+            gif.addFrame(canvas, { delay: 33 }); // 33ms = 30FPS
+        }
+
+        // スタイルを元に戻す
+        section.style.overflow = originalOverflow;
+
+        // GIFの生成とダウンロード
+        gif.on('finished', blob => {
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = fileName;
+            link.click();
+        });
+
+        gif.render();
+    } catch (error) {
+        console.error('GIFのダウンロードに失敗しました:', error);
+        alert('GIFのダウンロードに失敗しました。');
     }
 }
 
@@ -360,31 +538,43 @@ async function downloadAll() {
     }
 }
 
+// 跳ぶデッキ表示の切り替え
 function toggleDisplayMode() {
     const displayMode = document.querySelector('input[name="displayMode"]:checked').value;
     const deckSection = document.getElementById("deckSection");
     const sideboardSection = document.getElementById("sideboardSection");
     const deckSectionManaCurve = document.getElementById("deckSectionManaCurve");
     const deckSectionDancing = document.getElementById("deckSectionDancing");
+    const deckSectionJumping = document.getElementById("deckSectionJumping");
     const overlapControl = document.querySelector('.overlap-control');
 
     if (displayMode === "tile") {
-        deckSection.style.display = deckSection.querySelector("#deckImages").children.length > 0 ? "block" : "none";
-        sideboardSection.style.display = sideboardSection.querySelector("#sideboardImages").children.length > 0 ? "block" : "none";
+        deckSection.style.display = "block";
+        sideboardSection.style.display = "block";
         deckSectionManaCurve.style.display = "none";
         deckSectionDancing.style.display = "none";
+        deckSectionJumping.style.display = "none";
         overlapControl.style.display = "none";
     } else if (displayMode === "manaCurve") {
         deckSection.style.display = "none";
-        sideboardSection.style.display = sideboardSection.querySelector("#sideboardImages").children.length > 0 ? "block" : "none";
-        deckSectionManaCurve.style.display = deckSectionManaCurve.querySelector("#deckImagesManaCurve").children.length > 0 ? "block" : "none";
+        sideboardSection.style.display = "block";
+        deckSectionManaCurve.style.display = "block";
         deckSectionDancing.style.display = "none";
+        deckSectionJumping.style.display = "none";
         overlapControl.style.display = "block";
     } else if (displayMode === "dancing") {
         deckSection.style.display = "none";
-        sideboardSection.style.display = sideboardSection.querySelector("#sideboardImages").children.length > 0 ? "block" : "none";
+        sideboardSection.style.display = "block";
         deckSectionManaCurve.style.display = "none";
-        deckSectionDancing.style.display = deckSectionDancing.querySelector("#deckImagesDancing").children.length > 0 ? "block" : "none";
+        deckSectionDancing.style.display = "block";
+        deckSectionJumping.style.display = "none";
+        overlapControl.style.display = "none";
+    } else if (displayMode === "jumping") {
+        deckSection.style.display = "none";
+        sideboardSection.style.display = "block";
+        deckSectionManaCurve.style.display = "none";
+        deckSectionDancing.style.display = "none";
+        deckSectionJumping.style.display = "block";
         overlapControl.style.display = "none";
     }
 }
@@ -404,6 +594,7 @@ async function generateDeckImages() {
     const progressDiv = document.getElementById("progress");
     const progressText = document.getElementById("progressText");
     const deckImagesDancingDiv = document.getElementById("deckImagesDancing");
+    const downloadDancingBtn = document.getElementById("downloadDancingBtn");
 
     // 初期化
     deckImagesDiv.innerHTML = "";
@@ -416,6 +607,7 @@ async function generateDeckImages() {
     downloadMainBtn.style.display = "none";
     downloadSideboardBtn.style.display = "none";
     downloadAllBtn.style.display = "none";
+    downloadDancingBtn.style.display = "none";
     progressDiv.style.display = "none";
     deckImagesDancingDiv.innerHTML = "";
     deckSectionDancing.style.display = "none";
@@ -558,11 +750,11 @@ async function generateDeckImages() {
                 "lands": []
             };
 
-            cardResults.forEach(({ cardName, quantity, imageUrl, manaCost, isCreature, isLand }) => {
+            cardResults.forEach(({ cardName, quantity, imageUrl, manaCost, type_line }) => {
                 if (!imageUrl) return;
 
                 let group;
-                if (isLand) {
+                if (isLand(type_line)) {
                     group = "lands";
                 } else {
                     if (manaCost <= 1) group = "-1";
@@ -583,9 +775,9 @@ async function generateDeckImages() {
                     img.className = "card-image";
                     cardContainer.appendChild(img);
 
-                    if (isLand) {
+                    if (isLand(type_line)) {
                         manaCurveGroups[group].push(cardContainer);
-                    } else if (isCreature) {
+                    } else if (isCreature(type_line)) {
                         manaCurveGroups[group].creatures.push(cardContainer);
                     } else {
                         manaCurveGroups[group].nonCreatures.push(cardContainer);
@@ -656,6 +848,7 @@ async function generateDeckImages() {
             manaCurveTargetDiv.appendChild(manaCurveGrid);
         }
 
+        // 踊るデッキ表示（メインデッキのみ）
         if (!isSideboard) {
             const dancingTargetDiv = document.getElementById("deckImagesDancing");
             const rarityGroups = {
@@ -666,11 +859,11 @@ async function generateDeckImages() {
                 land: []
             };
     
-            cardResults.forEach(({ cardName, quantity, imageUrl, manaCost, isCreature, isLand, rarity }) => {
+            cardResults.forEach(({ cardName, quantity, imageUrl, manaCost, type_line, rarity }) => {
                 if (!imageUrl) return;
     
                 let group;
-                if (isLand) {
+                if (isLand(type_line)) {
                     group = "land";
                 } else {
                     group = rarity || "common";
@@ -731,6 +924,10 @@ async function generateDeckImages() {
             animateDancingCards(rarityGroups);
         }
 
+        if (!isSideboard) {
+            buildJumpingDeck(cardResults);
+        }
+
         const nameQuantityMap = new Map();
         cardMap.forEach(({ quantity }, key) => {
             const cardName = key.split('|')[0];
@@ -777,6 +974,8 @@ async function generateDeckImages() {
         if (mainDeckCount > 0 || sideboardCount > 0) {
             downloadAllBtn.style.display = "inline-block";
         }
+    } else {
+        // downloadDancingBtn.style.display = "inline-block";
     }
 
     toggleDisplayMode();
@@ -851,6 +1050,11 @@ document.getElementById('downloadSideboardBtn').addEventListener('click', () => 
 document.getElementById('downloadAllBtn').addEventListener('click', downloadAll);
 document.querySelectorAll('input[name="displayMode"]').forEach(radio => {
     radio.addEventListener('change', toggleDisplayMode);
+});
+
+// 踊るデッキ表示用のダウンロードボタンのイベントリスナーを追加
+document.getElementById('downloadDancingBtn').addEventListener('click', () => {
+    downloadDancingDeckGIF('deckSectionDancing', 'dancing_deck.gif');
 });
 
 // スライダーの値で重ね幅を更新

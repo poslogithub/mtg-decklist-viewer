@@ -193,3 +193,27 @@ body {
     font-size: 16px; /* カードサイズに合わせて縮小 */
     padding: 1px 3px;
 }
+
+.deck-section-jumping {
+    width: 960px;
+    height: 720px;
+    position: relative;
+    background-color: #f0f0f0; /* 領域を視認しやすくするための背景色 */
+    overflow: hidden; /* カードが領域外に出ないように */
+    display: flex;
+    justify-content: center;
+    align-items: flex-end; /* 土地カードを下部に配置 */
+}
+
+.jumping-card-container {
+    position: absolute;
+    width: 115px; /* 高さ160pxに合わせて縦横比を維持（223/310 = 115/160） */
+    height: 160px;
+    transition: transform 0.016s linear; /* 60fpsでスムーズなアニメーション */
+}
+
+.jumping-card-container img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
