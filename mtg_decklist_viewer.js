@@ -149,9 +149,9 @@ function buildJumpingDeck(cardResults) {
 
     // 土地カードを描画範囲の最下部に等間隔で配置
     const landCards = rarityGroups.land;
-    const landSpacing = landCards.length > 1 ? 960 / (landCards.length - 1) : 0;
+    const landSpacing = landCards.length > 0 ? 960 / landCards.length : 0;
     landCards.forEach((card, index) => {
-        const x = landCards.length > 1 ? index * landSpacing : 480; // 中央に配置
+        const x = landCards.length > 1 ? index * landSpacing : 480 - 58; // 中央に配置
         card.element.style.left = `${x}px`;
         card.element.style.bottom = "0px";
         jumpingGrid.appendChild(card.element);
@@ -925,8 +925,8 @@ function buildDancingDeck(cardResults) {
         row.cards.forEach((card, index) => {
             // カードを等間隔に配置
             const totalCards = row.cards.length;
-            const spacing = totalCards > 1 ? 960 / (totalCards - 1) : 0;
-            const x = totalCards > 1 ? index * spacing : 480; // 中央に配置
+            const spacing = totalCards > 0 ? 960 / totalCards : 0;
+            const x = totalCards > 1 ? index * spacing : 480 - 58; // 中央に配置
 
             card.element.style.left = `${x}px`;
             card.element.dataset.x = x;
