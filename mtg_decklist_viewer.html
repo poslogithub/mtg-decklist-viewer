@@ -5,18 +5,62 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="Content-Security-Policy" content="
         default-src 'self';
-        script-src 'self';
-        img-src 'self' blob: https://*.scryfall.com https://*.scryfall.io;
+        script-src 'self' https://cdnjs.cloudflare.com;
+        img-src 'self' blob: data: https://*.scryfall.com https://*.scryfall.io;
         connect-src 'self' https://*.scryfall.com https://*.scryfall.io;
         style-src 'self' 'unsafe-inline';
     ">
     <title>MTGデッキ画像生成</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <link rel="stylesheet" href="/mtg-decklist-viewer/mtg_decklist_viewer.css">
 </head>
 <body>
     <h1>MTGデッキ画像生成（Grokに作ってもらいました）</h1>
     <p>デッキリストを入力してください:</p>
-    <textarea id="deckInput" placeholder="4 稲妻&#10;2 桜族の長老&#10;..."></textarea>
+    <textarea id="deckInput" placeholder="4 稲妻&#10;2 桜族の長老&#10;...">デッキ
+6 沼 (TDM) 282
+3 森 (TDM) 286
+1 磨（みが）かれたやせ地（ち） (TDM) 267
+1 栄（えい）光（こう）の旗（き）手（しゅ） (TDM) 4
+1 嵐（あらし）の末（まつ）裔（えい） (TDM) 8
+1 ロクソドンの戦（いくさ）僧（そう）侶（りょ） (TDM) 15
+1 マルドゥの信（しん）奉（ぽう）者（しゃ） (TDM) 16
+1 夢（ゆめ）見（み）がちな空（そら）乗（の）り (TDM) 25
+1 嵐（あらし）ヶ（が）原（はら）の足（あし）留（ど）め (TDM) 28
+1 アリーシャの遺（い）産（さん） (TDM) 72
+2 獰（どう）猛（もう）なる死（し）喰（ぐ）らい (TDM) 80
+1 族（ぞく）樹（じゅ）の育（いく）種（しゅ）士（し） (TDM) 83
+1 クルーマの信（しん）徒（と） (TDM) 84
+1 夜（よ）刃（やいば）部（ぶ）隊（たい） (TDM) 85
+1 腐（くさ）れ呪（のろ）いのラクシャーサ (TDM) 87
+1 墓（はか）より出（い）でし地（ち）象（しょう）師（し） (TDM) 95
+1 敬（けい）慕（ぼ）される嵐（らん）唱（しょう）者（しゃ） (TDM) 97
+1 戦（いくさ）の慟（どう）哭（こく） (TDM) 98
+1 捨（しゃ）身（しん）に値（あたい）せり (TDM) 99
+1 受（う）け継（つ）ぎし地（ち）の開（かい）墾（こん） (TDM) 145
+1 サグの原（げん）生（せい）龍（りゅう） (TDM) 157
+1 下（した）生（ば）えの豹（ひょう） (TDM) 165
+1 遊（ゆう）撃（げき）サイ (TDM) 224
+1 アブザンの碑（ひ） (TDM) 238
+1 龍（りゅう）火（び）の刃（やいば） (TDM) 240
+2 砂（すな）草（そう）原（げん）の城（じょう）塞（さい） (TDM) 266
+1 花（はな）咲（さ）く砂（すな）地（ち） (TDM) 251
+4 平（へい）地（ち） (TDM) 278
+
+サイドボード
+1 連（れん）携（けい）の妙（みょう）技（ぎ） (TDM) 6
+1 務（つと）め果（は）たさずに死（し）なず (TDM) 10
+2 大（おお）嵐（あらし）の鷹（たか） (TDM) 31
+1 高（こう）圧（あつ）的（てき）な交（こう）渉（しょう） (TDM) 70
+1 残（ざん）酷（こく）な真（しん）実（じつ） (TDM) 76
+1 族（ぞく）樹（じゅ）の育（いく）種（しゅ）士（し） (TDM) 83
+1 族（ぞく）樹（じゅ）の育（いく）種（しゅ）士（し） (TDM) 83
+1 凝（こ）り性（しょう）の職（しょっ）工（こう） (TDM) 112
+1 雨（あめ）とばりの再（さい）生（せい）者（しゃ） (TDM) 152
+1 更（こう）生（せい）の儀（ぎ）式（しき） (TDM) 153
+1 サルカンの決（けつ）意（い） (TDM) 158
+1 翡（ひ）翠（すい）造（づく）りの歩（ほ）哨（しょう） (TDM) 243
+</textarea>
     <!-- ボタンをグループ化して横に並べる -->
     <div class="button-group">
         <button id="generateBtn">デッキ画像を生成</button>
