@@ -5,14 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="Content-Security-Policy" content="
         default-src 'self';
-        script-src 'self' https://cdnjs.cloudflare.com;
+        script-src 'self';
         img-src 'self' blob: https://*.scryfall.com https://*.scryfall.io;
         connect-src 'self' https://*.scryfall.com https://*.scryfall.io;
         style-src 'self' 'unsafe-inline';
     ">
     <title>MTGデッキ画像生成</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>  <!-- html2canvasライブラリ -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.js"></script> <!-- gif.jsライブラリ -->
     <link rel="stylesheet" href="/mtg-decklist-viewer/mtg_decklist_viewer.css">
 </head>
 <body>
@@ -44,7 +42,6 @@
         <button id="downloadMainBtn" style="display: none;">メインデッキ画像のみダウンロード</button>
         <button id="downloadSideboardBtn" style="display: none;">サイドボード画像のみダウンロード</button>
         <button id="downloadAllBtn" style="display: none;">メインデッキとサイドボードの両方の画像をダウンロード</button>
-        <button id="downloadDancingBtn" style="display: none;">踊るデッキGIFをダウンロード</button>
     </div>
     <div id="error"></div>
     <div id="deckContainer">

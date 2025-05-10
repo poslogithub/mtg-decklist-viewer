@@ -158,7 +158,7 @@ function buildJumpingDeck(cardResults) {
     });
 
     // 土地以外のカードを描画範囲内に配置
-    ["mythic", "rare", "uncommon", "common"].forEach(rarity => {
+    ["common", "uncommon", "rare", "mythic"].forEach(rarity => {
         rarityGroups[rarity].forEach((card, index) => {
             const x = Math.random() * (960 - 115); // 描画範囲内でランダムなX座標
             card.element.style.left = `${x}px`;
@@ -213,6 +213,8 @@ function animateJumpingCards(rarityGroups) {
                 if (x <= 0 || x >= 960 - 115) { // カード幅115pxを考慮
                     element.dataset.direction = direction === "left" ? "right" : "left";
                     x = Math.max(0, Math.min(x, 960 - 115));
+                    // 表示順を最後に（z-indexを下げる）
+                    element.parentNode.appendChild(element); // 親の最後に移動
                 }
 
                 element.dataset.x = x;
@@ -230,70 +232,6 @@ function animateJumpingCards(rarityGroups) {
     }
 
     requestAnimationFrame(update);
-}
-/**
- * 踊るデッキ表示をGIFとしてダウンロード
- * @param {string} sectionId - 踊るデッキ表示のセクションID
- * @param {string} fileName - ダウンロードするGIFファイル名
- */
-async function downloadDancingDeckGIF(sectionId, fileName) {
-    const section = document.getElementById(sectionId);
-    try {
-        const gif = new GIF({
-            workers: 2,
-            quality: 10,
-            workerScript: 'https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.worker.js'
-        });
-
-        // セクションのスタイルを一時的に変更してキャプチャ
-        const originalOverflow = section.style.overflow;
-        section.style.overflow = 'visible';
-
-        // 1秒間のアニメーションを生成（30FPSで30フレーム）
-        for (let i = 0; i < 30; i++) {
-            // アニメーションの動きをシミュレート（例: カードをランダムに動かす）
-            Array.from(section.querySelectorAll('.dancing-card-container')).forEach(card => {
-                const x = parseFloat(card.dataset.x) || 0;
-                const direction = card.dataset.direction || 'right';
-                const speed = 2; // カードの移動速度
-
-                // 左右移動
-                const newX = direction === 'right' ? x + speed : x - speed;
-                card.dataset.x = newX;
-                card.style.left = `${newX}px`;
-
-                // 端に到達したら方向を反転
-                if (newX <= 0 || newX >= 960 - 115) { // 960px幅 - カード幅115px
-                    card.dataset.direction = direction === 'right' ? 'left' : 'right';
-                }
-            });
-
-            // 現在の状態をキャプチャ
-            const canvas = await html2canvas(section, {
-                backgroundColor: '#ffffff',
-                scale: 1,
-                useCORS: true
-            });
-
-            gif.addFrame(canvas, { delay: 33 }); // 33ms = 30FPS
-        }
-
-        // スタイルを元に戻す
-        section.style.overflow = originalOverflow;
-
-        // GIFの生成とダウンロード
-        gif.on('finished', blob => {
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.download = fileName;
-            link.click();
-        });
-
-        gif.render();
-    } catch (error) {
-        console.error('GIFのダウンロードに失敗しました:', error);
-        alert('GIFのダウンロードに失敗しました。');
-    }
 }
 
 async function downloadSection(sectionId, fileName) {
@@ -612,7 +550,6 @@ async function generateDeckImages() {
     const deckImagesDancingDiv = document.getElementById("deckImagesDancing");
     const deckSectionJumping = document.getElementById("deckSectionJumping");
     const deckImagesJumpingDiv = document.getElementById("deckImagesJumping");
-    const downloadDancingBtn = document.getElementById("downloadDancingBtn");
 
     // 初期化
     deckImagesDiv.innerHTML = "";
@@ -625,7 +562,6 @@ async function generateDeckImages() {
     downloadMainBtn.style.display = "none";
     downloadSideboardBtn.style.display = "none";
     downloadAllBtn.style.display = "none";
-    downloadDancingBtn.style.display = "none";
     progressDiv.style.display = "none";
     deckSectionDancing.style.display = "none";
     deckImagesDancingDiv.innerHTML = "";
@@ -1078,11 +1014,6 @@ document.getElementById('downloadSideboardBtn').addEventListener('click', () => 
 document.getElementById('downloadAllBtn').addEventListener('click', downloadAll);
 document.querySelectorAll('input[name="displayMode"]').forEach(radio => {
     radio.addEventListener('change', toggleDisplayMode);
-});
-
-// 踊るデッキ表示用のダウンロードボタンのイベントリスナーを追加
-document.getElementById('downloadDancingBtn').addEventListener('click', () => {
-    downloadDancingDeckGIF('deckSectionDancing', 'dancing_deck.gif');
 });
 
 // スライダーの値で重ね幅を更新
