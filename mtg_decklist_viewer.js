@@ -648,7 +648,7 @@ async function generateDeckImages() {
         const cardPromises = Array.from(cardMap.entries()).map(async ([key, { quantity, setCode, cardNo }], index) => {
             const cardName = key.split('|')[0]; // 複合キーからcardNameを抽出
             const result = await fetchCardImage(cardName, setCode, cardNo);
-            await sleep(index * 100); // 1API毎に100ms遅延（Scryfall API利用規約）
+            await sleep(index * 150); // 1API毎に150ms遅延（Scryfall API利用規約（100msだけど余裕をもたせる））
             processedCards++;
             updateProgress(); // 進捗を更新
             return { cardName, quantity, ...result };
